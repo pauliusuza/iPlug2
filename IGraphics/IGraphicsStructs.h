@@ -39,6 +39,7 @@
 
 class IGraphics;
 class IControl;
+class ILambdaControl;
 struct IRECT;
 struct IMouseInfo;
 template <typename T = double>
@@ -46,7 +47,7 @@ inline T DegToRad(T degrees);
 
 typedef std::function<void(IControl*)> IActionFunction;
 typedef std::function<void(IControl*)> IAnimationFunction;
-typedef std::function<void(IControl*, IGraphics&, IRECT&, IMouseInfo&, double)> IDrawFunction;
+typedef std::function<void(ILambdaControl*, IGraphics&, IRECT&)> ILambdaDrawFunction;
 
 void DefaultClickActionFunc(IControl* pCaller);
 void DefaultAnimationFunc(IControl* pCaller);
@@ -930,7 +931,7 @@ struct IRECT
   void GetRandomPoint(float& x, float& y) const
   {
     std::random_device rd;
-    std::mt19937 gen(rd()); // TODO: most sensible RNG?
+    std::mt19937 gen(rd()); // TODO: most sensible RNG? - [AH this isn't the way to do this as the generator is only used once - you don't want to have one in struct - could be a static? - also the mersenne twister has quite a large state space (memory footprint)]
     std::uniform_real_distribution<float> dist(0., 1.);
     x = L + dist(gen) * W();
     y = T + dist(gen) * H();
@@ -1112,6 +1113,41 @@ public:
       r.PixelAlign(scale);
       Set(i, r);
     }
+  }
+  
+  static bool GetFracGrid(const IRECT& input, IRECTList& rects, const std::initializer_list<float>& rowFractions, const std::initializer_list<float>& colFractions)
+  {
+    IRECT rowsLeft = input;
+    float y = 0.;
+    float x = 0.;
+
+    if(std::accumulate(rowFractions.begin(), rowFractions.end(), 0.f) != 1.)
+      return false;
+    
+    if(std::accumulate(colFractions.begin(), colFractions.end(), 0.f) != 1.)
+      return false;
+
+    for (auto& rowFrac : rowFractions)
+    {
+      IRECT thisRow = input.FracRectVertical(rowFrac, true).GetTranslated(0, y);
+      
+      x = 0.;
+
+      for (auto& colFrac : colFractions)
+      {
+        IRECT thisCell = thisRow.FracRectHorizontal(colFrac).GetTranslated(x, 0);
+        
+        rects.Add(thisCell);
+        
+        x += thisCell.W();
+      }
+      
+      rowsLeft.Intersect(thisRow);
+      
+      y = rects.Bounds().H();
+    }
+    
+    return true;
   }
   
   void Optimize()
@@ -1333,12 +1369,11 @@ struct IPattern
     mStops[0] = IColorStop(color, 0.0);
   }
   
-  static IPattern CreateLinearGradient(float x1, float y1, float x2, float y2)
+  static IPattern CreateLinearGradient(float x1, float y1, float x2, float y2, const std::initializer_list<IColorStop>& stops = {})
   {
     IPattern pattern(kLinearPattern);
     
     // Calculate the affine transform from one line segment to another!
-    
     const double xd = x2 - x1;
     const double yd = y2 - y1;
     const double d = sqrt(xd * xd + yd * yd);
@@ -1356,33 +1391,39 @@ struct IPattern
                          static_cast<float>(x0),
                          static_cast<float>(y0));
     
-    return pattern;
-  }
-  
-  static IPattern CreateLinearGradient(float x1, float y1, float x2, float y2, std::initializer_list<IColorStop> stops)
-  {
-    IPattern pattern = CreateLinearGradient(x1, y1, x2, y2);
-    
     for (auto& stop : stops)
       pattern.AddStop(stop.mColor, stop.mOffset);
     
     return pattern;
   }
   
-  static IPattern CreateRadialGradient(float x1, float y1, float r)
+  static IPattern CreateLinearGradient(const IRECT& bounds, EDirection direction, const std::initializer_list<IColorStop>& stops = {})
+  {
+    float x1, y1, x2, y2;
+    
+    if(direction == kHorizontal)
+    {
+      y1 = bounds.MH(); y2 = y1;
+      x1 = bounds.L;
+      x2 = bounds.R;
+    }
+    else//(direction == kVertical)
+    {
+      x1 = bounds.MW(); x2 = x1;
+      y1 = bounds.T;
+      y2 = bounds.B;
+    }
+    
+    return CreateLinearGradient(x1, y1, x2, y2, stops);
+  }
+  
+  static IPattern CreateRadialGradient(float x1, float y1, float r, const std::initializer_list<IColorStop>& stops = {})
   {
     IPattern pattern(kRadialPattern);
     
     const float s = 1.f / r;
 
     pattern.SetTransform(s, 0, 0, s, -(x1 * s), -(y1 * s));
-    
-    return pattern;
-  }
-  
-  static IPattern CreateRadialGradient(float x1, float y1, float r, std::initializer_list<IColorStop> stops)
-  {
-    IPattern pattern = CreateRadialGradient(x1, y1, r);
     
     for (auto& stop : stops)
       pattern.AddStop(stop.mColor, stop.mOffset);
