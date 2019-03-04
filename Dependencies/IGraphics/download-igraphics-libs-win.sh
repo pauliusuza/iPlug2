@@ -14,13 +14,13 @@ FREETYPE_VERSION=freetype-2.9.1
 PKGCONFIG_VERSION=pkg-config-0.28
 PIXMAN_VERSION=pixman-0.34.0
 EXPAT_VERSION=expat-2.2.5
-PNG_VERSION=v1.6.35
+PNG_VERSION=1.6.36
 ZLIB_VERSION=zlib-1.2.11
 
 # URLs where tarballs of releases can be downloaded - no trailing slash
 #CAIRO tarball is compressed using xz which is not available on git-bash shell, so checkout tag via git
 CAIRO_URL=git://git.cairographics.org/git/cairo
-PNG_URL=https://github.com/glennrp/libpng/archive
+PNG_URL=http://github.com/glennrp/libpng-releases/raw/master/libpng-
 ZLIB_URL=https://www.zlib.net
 PIXMAN_URL=https://cairographics.org/releases
 FREETYPE_URL=https://download.savannah.gnu.org/releases/freetype
