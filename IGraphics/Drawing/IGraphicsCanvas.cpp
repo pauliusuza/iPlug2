@@ -55,18 +55,20 @@ IGraphicsCanvas::~IGraphicsCanvas()
 {
 }
 
-void IGraphicsCanvas::DrawBitmap(IBitmap& bitmap, const IRECT& bounds, int srcX, int srcY, const IBlend* pBlend)
+void IGraphicsCanvas::DrawBitmap(const IBitmap& bitmap, const IRECT& bounds, int srcX, int srcY, const IBlend* pBlend)
 {
   val context = GetContext();
   val img = *bitmap.GetAPIBitmap()->GetBitmap();
-  GetContext().call<void>("save");
-  SetCanvasBlendMode(pBlend);
+  context.call<void>("save");
+  SetCanvasBlendMode(context, pBlend);
   context.set("globalAlpha", BlendWeight(pBlend));
     
   const float bs = bitmap.GetScale();
   IRECT sr = bounds;
   sr.Scale(bs * bitmap.GetDrawScale());
 
+  PathRect(bounds);
+  context.call<void>("clip");
   context.call<void>("drawImage", img, srcX * bs, srcY * bs, sr.W(), sr.H(), bounds.L, bounds.T, bounds.W(), bounds.H());
   GetContext().call<void>("restore");
 }
@@ -153,7 +155,7 @@ void IGraphicsCanvas::PathFill(const IPattern& pattern, const IFillOptions& opti
 
 void IGraphicsCanvas::SetCanvasSourcePattern(val& context, const IPattern& pattern, const IBlend* pBlend)
 {
-  SetCanvasBlendMode(pBlend);
+  SetCanvasBlendMode(context, pBlend);
   
   switch (pattern.mType)
   {
@@ -177,15 +179,6 @@ void IGraphicsCanvas::SetCanvasSourcePattern(val& context, const IPattern& patte
       val gradient = (pattern.mType == kLinearPattern) ?
         context.call<val>("createLinearGradient", m.mTX, m.mTY, x, y) :
         context.call<val>("createRadialGradient", m.mTX, m.mTY, 0.0, m.mTX, m.mTY, m.mXX);
-        
-      /*
-      switch (pattern.mExtend)
-      {
-        case kExtendNone:      cairo_pattern_set_extend(cairoPattern, CAIRO_EXTEND_NONE);      break;
-        case kExtendPad:       cairo_pattern_set_extend(cairoPattern, CAIRO_EXTEND_PAD);       break;
-        case kExtendReflect:   cairo_pattern_set_extend(cairoPattern, CAIRO_EXTEND_REFLECT);   break;
-        case kExtendRepeat:    cairo_pattern_set_extend(cairoPattern, CAIRO_EXTEND_REPEAT);    break;
-      }*/
       
       for (int i = 0; i < pattern.NStops(); i++)
       {
@@ -200,30 +193,25 @@ void IGraphicsCanvas::SetCanvasSourcePattern(val& context, const IPattern& patte
   }
 }
 
-void IGraphicsCanvas::SetCanvasBlendMode(const IBlend* pBlend)
+void IGraphicsCanvas::SetCanvasBlendMode(val& context, const IBlend* pBlend)
 {
   if (!pBlend)
-    GetContext().set("globalCompositeOperation", "source-over");
+    context.set("globalCompositeOperation", "source-over");
   
   switch (pBlend->mMethod)
   {
-    case kBlendNone:        GetContext().set("globalCompositeOperation", "source-over");        break;
-    case kBlendClobber:     GetContext().set("globalCompositeOperation", "copy");               break;
-          
-    case kBlendSourceOver:  GetContext().set("globalCompositeOperation", "source-over");        break;
-    case kBlendSourceIn:    GetContext().set("globalCompositeOperation", "source-in");          break;
-    case kBlendSourceOut:   GetContext().set("globalCompositeOperation", "source-out");         break;
-    case kBlendSourceAtop:  GetContext().set("globalCompositeOperation", "source-atop");        break;
-
-    case kBlendDestOver:    GetContext().set("globalCompositeOperation", "destination-over");   break;
-    case kBlendDestIn:      GetContext().set("globalCompositeOperation", "destination-in");     break;
-    case kBlendDestOut:     GetContext().set("globalCompositeOperation", "destination-out");    break;
-    case kBlendDestAtop:    GetContext().set("globalCompositeOperation", "destination-atop");   break;
-      
-    case kBlendXOR:         GetContext().set("globalCompositeOperation", "xor");                break;
-
-    case kBlendAdd:         GetContext().set("globalCompositeOperation", "lighter");            break;
-    case kBlendColorDodge:  GetContext().set("globalCompositeOperation", "color-dodge");        break;
+    case kBlendDefault:       // fall through
+    case kBlendClobber:       // fall through
+    case kBlendSourceOver:    context.set("globalCompositeOperation", "source-over");        break;
+    case kBlendSourceIn:      context.set("globalCompositeOperation", "source-in");          break;
+    case kBlendSourceOut:     context.set("globalCompositeOperation", "source-out");         break;
+    case kBlendSourceAtop:    context.set("globalCompositeOperation", "source-atop");        break;
+    case kBlendDestOver:      context.set("globalCompositeOperation", "destination-over");   break;
+    case kBlendDestIn:        context.set("globalCompositeOperation", "destination-in");     break;
+    case kBlendDestOut:       context.set("globalCompositeOperation", "destination-out");    break;
+    case kBlendDestAtop:      context.set("globalCompositeOperation", "destination-atop");   break;
+    case kBlendAdd:           context.set("globalCompositeOperation", "lighter");            break;
+    case kBlendXOR:           context.set("globalCompositeOperation", "xor");                break;
   }
 }
 
@@ -315,40 +303,9 @@ APIBitmap* IGraphicsCanvas::LoadAPIBitmap(const char* fileNameOrResID, int scale
   return new CanvasBitmap(GetPreloadedImages()[fileNameOrResID], fileNameOrResID + 1, scale);
 }
 
-APIBitmap* IGraphicsCanvas::ScaleAPIBitmap(const APIBitmap* pBitmap, int scale)
+APIBitmap* IGraphicsCanvas::CreateAPIBitmap(int width, int height, int scale, double drawScale)
 {
-//  int destW = (pBitmap->GetWidth() / pBitmap->GetScale()) * scale;
-//  int destH = (pBitmap->GetHeight() / pBitmap->GetScale()) * scale;
-//
-//  val imgSrc = *pBitmap->GetBitmap();
-//
-//  // Make an offscreen canvas and resize
-//  val documentHead = val::global("document")["head"];
-//  val canvas = GetCanvas();
-//  documentHead.call<val>("appendChild", canvas);
-//  val canvasNode = documentHead["lastChild"];
-//  val context = canvas.call<val>("getContext", std::string("2d"));
-//  context.set("width", destW);
-//  context.set("height", destH);
-//
-//  // Scale and draw
-//  context.call<void>("scale", scale / pBitmap->GetScale(), scale / pBitmap->GetScale());
-//  context.call<void>("drawImage", imgSrc, 0, 0);
-//
-//  // Copy to an image
-//  val img = val::global("Image").new_();
-//  img.set("src", canvas.call<val>("toDataURL"));
-//
-//  // Delete the canvas
-//  documentHead.call<val>("removeChild", canvasNode);
-
-  return new CanvasBitmap(GetPreloadedImages()[""], "", scale);
-}
-
-APIBitmap* IGraphicsCanvas::CreateAPIBitmap(int width, int height)
-{
-  const double scale = GetBackingPixelScale();
-  return new CanvasBitmap(std::round(width * scale), std::round(height * scale), GetScreenScale(), GetDrawScale());
+  return new CanvasBitmap(width, height, scale, drawScale);
 }
 
 void IGraphicsCanvas::GetLayerBitmapData(const ILayerPtr& layer, RawBitmapData& data)
@@ -403,12 +360,11 @@ void IGraphicsCanvas::ApplyShadowMask(ILayerPtr& layer, RawBitmapData& mask, con
       pixelData.set(i, in[i]);
     
     localContext.call<void>("putImageData", imageData, 0, 0);
-    IBlend blend(kBlendNone, shadow.mOpacity);
+    IBlend blend(kBlendSourceIn, shadow.mOpacity);
     localContext.call<void>("rect", 0, 0, width, height);
     localContext.call<void>("scale", scale, scale);
     localContext.call<void>("translate", -(layer->Bounds().L + shadow.mXOffset), -(layer->Bounds().T + shadow.mYOffset));
     SetCanvasSourcePattern(localContext, shadow.mPattern, &blend);
-    localContext.set("globalCompositeOperation", "source-in");
     localContext.call<void>("fill");
     
     layerContext.set("globalCompositeOperation", "destination-over");

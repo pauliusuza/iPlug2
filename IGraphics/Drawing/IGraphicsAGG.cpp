@@ -62,23 +62,18 @@ inline agg::comp_op_e AGGBlendMode(const IBlend* pBlend)
   
   switch (pBlend->mMethod)
   {
-    case kBlendNone:            return agg::comp_op_src_over;
-    case kBlendClobber:         return agg::comp_op_src;
-          
+    case kBlendDefault:         // fall through
+    case kBlendClobber:         // fall through
     case kBlendSourceOver:      return agg::comp_op_src_over;
     case kBlendSourceIn:        return agg::comp_op_src_in;
     case kBlendSourceOut:       return agg::comp_op_src_out;
     case kBlendSourceAtop:      return agg::comp_op_src_atop;
-          
     case kBlendDestOver:        return agg::comp_op_dst_over;
     case kBlendDestIn:          return agg::comp_op_dst_in;
     case kBlendDestOut:         return agg::comp_op_dst_out;
     case kBlendDestAtop:        return agg::comp_op_dst_atop;
-   
-    case kBlendXOR:             return agg::comp_op_xor;
-
     case kBlendAdd:             return agg::comp_op_plus;
-    case kBlendColorDodge:      return agg::comp_op_color_dodge;
+    case kBlendXOR:             return agg::comp_op_xor;
   }
 }
 
@@ -230,7 +225,7 @@ bool IGraphicsAGG::LoadFont(const char* fileName)
   WDL_String fontNameWithoutExt(fileName, (int) strlen(fileName));
   fontNameWithoutExt.remove_fileext();
   WDL_String fullPath;
-  EResourceLocation foundResource = OSFindResource(fileName, "ttf", fullPath);
+  EResourceLocation foundResource = LocateResource(fileName, "ttf", fullPath, GetBundleID(), GetWinModuleHandle());
   
   if (foundResource != EResourceLocation::kNotFound)
   {
@@ -238,7 +233,7 @@ bool IGraphicsAGG::LoadFont(const char* fileName)
     if (foundResource == EResourceLocation::kWinBinary)
     {
       int sizeInBytes = 0;
-      const void* pResData = LoadWinResource(fullPath.Get(), "ttf", sizeInBytes);
+      const void* pResData = LoadWinResource(fullPath.Get(), "ttf", sizeInBytes, GetWinModuleHandle());
       
       if(pResData && sizeInBytes)
       {
@@ -292,7 +287,7 @@ bool CheckTransform(const agg::trans_affine& mtx)
   return mtx_without_translate.is_identity(1e-3);
 }
 
-void IGraphicsAGG::DrawBitmap(IBitmap& bitmap, const IRECT& dest, int srcX, int srcY, const IBlend* pBlend)
+void IGraphicsAGG::DrawBitmap(const IBitmap& bitmap, const IRECT& dest, int srcX, int srcY, const IBlend* pBlend)
 {
   bool preMultiplied = static_cast<AGGBitmap*>(bitmap.GetAPIBitmap())->IsPreMultiplied();
   IRECT bounds = mClipRECT.Empty() ? dest : mClipRECT.Intersect(dest);
@@ -472,68 +467,29 @@ IColor IGraphicsAGG::GetPoint(int x, int y)
 
 APIBitmap* IGraphicsAGG::LoadAPIBitmap(const char* fileNameOrResID, int scale, EResourceLocation location, const char* ext)
 {
-  APIBitmap* pResult = nullptr;
-  PixelMapType* pPixelMap = new PixelMapType();
+  std::unique_ptr<PixelMapType> pixelMap(new PixelMapType());
   bool ispng = strstr(fileNameOrResID, "png") != nullptr;
 
 #if defined OS_WIN
   if (location != EResourceLocation::kNotFound && ispng)
   {
-    if (pPixelMap->load_img((HINSTANCE)GetWinModuleHandle(), fileNameOrResID, agg::pixel_map::format_png))
-      pResult = new AGGBitmap(pPixelMap, scale, 1.f, false);
+    if (pixelMap->load_img((HINSTANCE)GetWinModuleHandle(), fileNameOrResID, agg::pixel_map::format_png))
+      return new AGGBitmap(pixelMap.release(), scale, 1.f, false);
   }
 #else
   if (location == EResourceLocation::kAbsolutePath && ispng)
   {
-    if (pPixelMap->load_img(fileNameOrResID, agg::pixel_map::format_png))
-      pResult = new AGGBitmap(pPixelMap, scale, 1.f, false);
+    if (pixelMap->load_img(fileNameOrResID, agg::pixel_map::format_png))
+      return new AGGBitmap(pixelMap.release(), scale, 1.f, false);
   }
 #endif
 
-  if (!pResult)
-  {
-    delete pPixelMap;
-    return new APIBitmap();
-  }
-  else
-    return pResult;
+  return new APIBitmap();
 }
 
-APIBitmap* IGraphicsAGG::ScaleAPIBitmap(const APIBitmap* pBitmap, int scale)
+APIBitmap* IGraphicsAGG::CreateAPIBitmap(int width, int height, int scale, double drawScale)
 {
-  int destW = (pBitmap->GetWidth() / pBitmap->GetScale()) * scale;
-  int destH = (pBitmap->GetHeight() / pBitmap->GetScale()) * scale;
-    
-  agg::pixel_map* pSource = pBitmap->GetBitmap();
-  agg::pixel_map* pCopy = CreatePixmap(destW, destH);
-  agg::rendering_buffer src(pSource->buf(), pSource->width(), pSource->height(), pSource->row_bytes());
-  agg::rendering_buffer dest(pCopy->buf(), pCopy->width(), pCopy->height(), pCopy->row_bytes());
-  PixfmtType imgPixfSrc(src);
-  PixfmtType imgPixfDest(dest);
-  
-  RenbaseType renBase(imgPixfDest);
-  renBase.clear(agg::rgba(0, 0, 0, 0));
-  
-  agg::rasterizer_scanline_aa<> rasterizer;
-  agg::trans_affine_scaling srcMtx(pBitmap->GetScale() / (double) scale);
-  InterpolatorType interpolator(srcMtx);
-  imgSourceType imgSrc(imgPixfSrc);
-  SpanAllocatorType spanAllocator;
-  agg::scanline_u8 scanline;
-  SpanGeneratorType spanGenerator(imgSrc, interpolator);
-  BitmapRenderType renderer(renBase, spanAllocator, spanGenerator);
-  
-  agg::rounded_rect bounds(0, 0, destW, destH, 0);
-  rasterizer.add_path(bounds);
-  agg::render_scanlines(rasterizer, scanline, renderer);
-  
-  return new AGGBitmap(pCopy, scale, pBitmap->GetDrawScale(), false);
-}
-
-APIBitmap* IGraphicsAGG::CreateAPIBitmap(int width, int height)
-{
-  const double scale = GetBackingPixelScale();
-  return new AGGBitmap(CreatePixmap(std::round(width * scale), std::round(height * scale)), GetScreenScale(), GetDrawScale(), true);
+  return new AGGBitmap(CreatePixmap(width, height), scale, drawScale, true);
 }
 
 bool IGraphicsAGG::BitmapExtSupported(const char* ext)
