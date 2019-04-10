@@ -161,50 +161,18 @@ inline void NanoVGSetBlendMode(NVGcontext* context, const IBlend* pBlend)
   
   switch (pBlend->mMethod)
   {
-    case kBlendNone:
-      nvgGlobalCompositeOperation(context, NVG_SOURCE_OVER);
-      break;
-    case kBlendClobber:
-      nvgGlobalCompositeOperation(context, NVG_SOURCE_OVER);
-      //nvgGlobalCompositeOperation(context, NVG_COPY);
-      break;
-          
-    case kBlendAdd:
-      nvgGlobalCompositeBlendFunc(context, NVG_SRC_ALPHA, NVG_DST_ALPHA);
-      break;
-  
-    case kBlendSourceOver:
-      nvgGlobalCompositeOperation(context, NVG_SOURCE_OVER);
-      break;
-    case kBlendSourceIn:
-      nvgGlobalCompositeOperation(context, NVG_SOURCE_IN);
-      break;
-    case kBlendSourceOut:
-      nvgGlobalCompositeOperation(context, NVG_SOURCE_OUT);
-      break;
-    case kBlendSourceAtop:
-      nvgGlobalCompositeOperation(context, NVG_ATOP);
-      break;
-          
-    case kBlendDestOver:
-      nvgGlobalCompositeOperation(context, NVG_DESTINATION_OVER);
-      break;
-    case kBlendDestIn:
-      nvgGlobalCompositeOperation(context, NVG_DESTINATION_IN);
-      break;
-    case kBlendDestOut:
-      nvgGlobalCompositeOperation(context, NVG_DESTINATION_OUT);
-      break;
-    case kBlendDestAtop:
-      nvgGlobalCompositeOperation(context, NVG_DESTINATION_ATOP);
-      break;
-          
-    case kBlendXOR:
-      nvgGlobalCompositeOperation(context, NVG_XOR);
-      break;
-          
-    default:
-      nvgGlobalCompositeOperation(context, NVG_SOURCE_OVER);
+    case kBlendDefault:       // fall through
+    case kBlendClobber:       // fall through
+    case kBlendSourceOver:    nvgGlobalCompositeOperation(context, NVG_SOURCE_OVER);                break;
+    case kBlendSourceIn:      nvgGlobalCompositeOperation(context, NVG_SOURCE_IN);                  break;
+    case kBlendSourceOut:     nvgGlobalCompositeOperation(context, NVG_SOURCE_OUT);                 break;
+    case kBlendSourceAtop:    nvgGlobalCompositeOperation(context, NVG_ATOP);                       break;
+    case kBlendDestOver:      nvgGlobalCompositeOperation(context, NVG_DESTINATION_OVER);           break;
+    case kBlendDestIn:        nvgGlobalCompositeOperation(context, NVG_DESTINATION_IN);             break;
+    case kBlendDestOut:       nvgGlobalCompositeOperation(context, NVG_DESTINATION_OUT);            break;
+    case kBlendDestAtop:      nvgGlobalCompositeOperation(context, NVG_DESTINATION_ATOP);           break;
+    case kBlendAdd:           nvgGlobalCompositeBlendFunc(context, NVG_SRC_ALPHA, NVG_DST_ALPHA);   break;
+    case kBlendXOR:           nvgGlobalCompositeOperation(context, NVG_XOR);                        break;
   }
 }
 
@@ -317,7 +285,7 @@ APIBitmap* IGraphicsNanoVG::LoadAPIBitmap(const char* fileNameOrResID, int scale
     const void* pResData = nullptr;
 
     int size = 0;
-    pResData = LoadWinResource(fileNameOrResID, ext, size);
+    pResData = LoadWinResource(fileNameOrResID, ext, size, GetWinModuleHandle());
 
     if (pResData)
       idx = nvgCreateImageMem(mVG, 0 /*flags*/, (unsigned char*)pResData, size);
@@ -332,10 +300,9 @@ APIBitmap* IGraphicsNanoVG::LoadAPIBitmap(const char* fileNameOrResID, int scale
   return new NanoVGBitmap(mVG, fileNameOrResID, scale, idx);
 }
 
-APIBitmap* IGraphicsNanoVG::CreateAPIBitmap(int width, int height)
+APIBitmap* IGraphicsNanoVG::CreateAPIBitmap(int width, int height, int scale, double drawScale)
 {
-  const double scale = GetBackingPixelScale();
-  return new NanoVGBitmap(this, mVG, std::ceil(width * scale), std::ceil(height * scale), GetScreenScale(), GetDrawScale());
+  return new NanoVGBitmap(this, mVG, width, height, scale, drawScale);
 }
 
 void IGraphicsNanoVG::GetLayerBitmapData(const ILayerPtr& layer, RawBitmapData& data)
@@ -525,7 +492,7 @@ void IGraphicsNanoVG::EndFrame()
 #endif
 }
 
-void IGraphicsNanoVG::DrawBitmap(IBitmap& bitmap, const IRECT& dest, int srcX, int srcY, const IBlend* pBlend)
+void IGraphicsNanoVG::DrawBitmap(const IBitmap& bitmap, const IRECT& dest, int srcX, int srcY, const IBlend* pBlend)
 {
   APIBitmap* pAPIBitmap = bitmap.GetAPIBitmap();
   
@@ -725,7 +692,7 @@ bool IGraphicsNanoVG::LoadFont(const char* fileName)
   WDL_String fontNameWithoutExt(fileName, (int) strlen(fileName));
   fontNameWithoutExt.remove_fileext();
   WDL_String fullPath;
-  EResourceLocation foundResource = OSFindResource(fileName, "ttf", fullPath);
+  EResourceLocation foundResource = LocateResource(fileName, "ttf", fullPath, GetBundleID(), GetWinModuleHandle());
  
   if (foundResource != EResourceLocation::kNotFound)
   {
@@ -735,7 +702,7 @@ bool IGraphicsNanoVG::LoadFont(const char* fileName)
     if(foundResource == EResourceLocation::kWinBinary)
     {
       int sizeInBytes = 0;
-      const void* pResData = LoadWinResource(fullPath.Get(), "ttf", sizeInBytes);
+      const void* pResData = LoadWinResource(fullPath.Get(), "ttf", sizeInBytes, GetWinModuleHandle());
 
       if(pResData && sizeInBytes)
         fontID = nvgCreateFontMem(mVG, fontNameWithoutExt.Get(), (unsigned char*) pResData, sizeInBytes, 0 /* ?? */);
@@ -764,7 +731,7 @@ void IGraphicsNanoVG::UpdateLayer()
   if (mLayers.empty())
   {
     nvgEndFrame(mVG);
-#ifndef IGRAPHICS_METAL
+#ifdef IGRAPHICS_GL
     glViewport(0, 0, WindowWidth() * GetScreenScale(), WindowHeight() * GetScreenScale());
 #endif
     nvgBindFramebuffer(mMainFrameBuffer);
@@ -773,7 +740,7 @@ void IGraphicsNanoVG::UpdateLayer()
   else
   {
     nvgEndFrame(mVG);
-#ifndef IGRAPHICS_METAL
+#ifdef IGRAPHICS_GL
     const double scale = GetBackingPixelScale();
     glViewport(0, 0, mLayers.top()->Bounds().W() * scale, mLayers.top()->Bounds().H() * scale);
 #endif

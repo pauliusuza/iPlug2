@@ -52,9 +52,11 @@ private:
 class AGGBitmap : public APIBitmap
 {
 public:
-  AGGBitmap(agg::pixel_map* pPixMap, int scale, float drawScale, bool preMultiplied) : APIBitmap (pPixMap, pPixMap->width(), pPixMap->height(), scale, drawScale), mPreMultiplied(preMultiplied) {}
-  virtual ~AGGBitmap() { delete ((agg::pixel_map*) GetBitmap()); }
-    bool IsPreMultiplied() const { return mPreMultiplied; }
+  AGGBitmap(agg::pixel_map* pPixMap, int scale, float drawScale, bool preMultiplied)
+    : APIBitmap(pPixMap, pPixMap->width(), pPixMap->height(), scale, drawScale), mPreMultiplied(preMultiplied)
+    {}
+  virtual ~AGGBitmap() { delete GetBitmap(); }
+  bool IsPreMultiplied() const { return mPreMultiplied; }
 private:
   bool mPreMultiplied;
 };
@@ -160,7 +162,6 @@ public:
     
     void Rasterize(PixfmtType& src, agg::trans_affine& srcMtx, agg::comp_op_e op, agg::cover_type cover)
     {
-      mPixf.comp_op(op);
       RenderBitmap(src, mRenBase, srcMtx, op, cover);
     }
     
@@ -173,7 +174,6 @@ public:
     
     void Rasterize(PixfmtPreType& src, agg::trans_affine& srcMtx, agg::comp_op_e op, agg::cover_type cover)
     {
-      mPixfPre.comp_op(op);
       RenderBitmap(src, mRenBasePre, srcMtx, op, cover);
     }
     
@@ -229,6 +229,7 @@ public:
     {
       agg::scanline_p8 scanline;
       mPixf.comp_op(op);
+      mPixfPre.comp_op(op);
       agg::render_scanlines(mRasterizer, scanline, renderer);
     }
     
@@ -262,7 +263,7 @@ public:
 
   void DrawResize() override;
 
-  void DrawBitmap(IBitmap& bitmap, const IRECT& dest, int srcX, int srcY, const IBlend* pBlend) override;
+  void DrawBitmap(const IBitmap& bitmap, const IRECT& dest, int srcX, int srcY, const IBlend* pBlend) override;
 
   void PathClear() override { mPath.remove_all(); }
   void PathClose() override { mPath.close_polygon(); }
@@ -290,8 +291,7 @@ public:
 
 protected:
   APIBitmap* LoadAPIBitmap(const char* fileNameOrResID, int scale, EResourceLocation location, const char* ext) override;
-  APIBitmap* ScaleAPIBitmap(const APIBitmap* pBitmap, int s) override;
-  APIBitmap* CreateAPIBitmap(int width, int height) override;
+  APIBitmap* CreateAPIBitmap(int width, int height, int scale, double drawScale) override;
 
   int AlphaChannel() const override { return PixelOrder().A; }
   bool FlippedBitmap() const override { return false; }
