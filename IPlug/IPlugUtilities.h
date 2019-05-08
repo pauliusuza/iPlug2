@@ -14,6 +14,7 @@
  * @file
  * Utility functions and macros
  * @defgroup IPlugUtilities IPlug::Utilities
+ * Utility functions and macros
  * @{
  */
 
@@ -38,8 +39,6 @@
 #pragma warning(disable:4800)		// if (pointer) ...
 #pragma warning(disable:4805)		// Compare bool and BOOL.
 #endif
-
-#define DELETE_NULL(p) {delete(p); p=nullptr;}
 
 /** Clips the value \p x between \p lo and \p hi
  * @param x Input value

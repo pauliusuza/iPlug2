@@ -19,15 +19,19 @@
 
 #include <cmath>
 #include <cassert>
+#include <cstdint>
 #include <functional>
 #include <algorithm>
 #include <numeric>
 #include <chrono>
 #include <string>
+#include <memory>
 
 #include "mutex.h"
 #include "wdlstring.h"
+#include "wdlendian.h"
 #include "ptrlist.h"
+#include "heapbuf.h"
 
 #include "nanosvg.h"
 
@@ -50,14 +54,14 @@ typedef std::function<void(ILambdaControl*, IGraphics&, IRECT&)> ILambdaDrawFunc
 
 void DefaultClickActionFunc(IControl* pCaller);
 void DefaultAnimationFunc(IControl* pCaller);
-void FlashCircleClickActionFunc(IControl* pCaller);
-void FlashCircleClickAnimationFunc(IControl* pCaller);
+void SplashClickActionFunc(IControl* pCaller);
+void SplashAnimationFunc(IControl* pCaller);
 
 typedef std::chrono::high_resolution_clock Time;
 typedef std::chrono::time_point<std::chrono::high_resolution_clock> TimePoint;
 typedef std::chrono::duration<double, std::chrono::milliseconds::period> Milliseconds;
 
-typedef WDL_TypedBuf<unsigned char> RawBitmapData;
+typedef WDL_TypedBuf<uint8_t> RawBitmapData;
 
 #ifdef IGRAPHICS_AGG
   #include "IGraphicsAGG_src.h"
@@ -76,13 +80,24 @@ typedef WDL_TypedBuf<unsigned char> RawBitmapData;
 #elif defined IGRAPHICS_LICE
   #include "lice.h"
   typedef LICE_IBitmap* BitmapData;
-  class LICE_IFont;
 #elif defined IGRAPHICS_CANVAS
   #include <emscripten.h>
   #include <emscripten/val.h>
   typedef emscripten::val* BitmapData;
 #else // NO_IGRAPHICS
   typedef void* BitmapData;
+#endif
+
+#if defined OS_MAC || defined OS_IOS
+#include <CoreText/CoreText.h>
+typedef CTFontDescriptorRef FontDescriptor;
+#elif defined OS_WIN
+#include "wingdi.h"
+#include "Stringapiset.h"
+typedef HFONT FontDescriptor;
+#elif defined OS_WEB
+typedef std::pair<WDL_String, WDL_String>* FontDescriptor;
+#else // NO_IGRAPHICS
 #endif
 
 /** A bitmap abstraction around the different drawing back end bitmap representations.
@@ -528,49 +543,50 @@ struct IStrokeOptions
   DashOptions mDash;
 };
 
+/** Used to specify text styles when loading fonts. */
+enum ETextStyle { kTextStyleNormal, kTextStyleBold, kTextStyleItalic };
+
+static const char* TextStyleString(ETextStyle style)
+{
+  switch (style)
+  {
+    case kTextStyleNormal:  return "Regular";
+    case kTextStyleBold:    return "Bold";
+    case kTextStyleItalic:  return "Italic";
+  }
+}
+
 /** Used to manage font and text/text entry style for a piece of text on the UI, independent of draw class/platform.*/
 struct IText
 {
-  /** /todo */
-  enum EStyle { kStyleNormal, kStyleBold, kStyleItalic } mStyle;
-
   /** /todo */
   enum EAlign { kAlignNear, kAlignCenter, kAlignFar } mAlign;
 
   /** /todo */
   enum EVAlign { kVAlignTop, kVAlignMiddle, kVAlignBottom } mVAlign;
 
-  /** /todo */
-  enum EQuality { kQualityDefault, kQualityNonAntiAliased, kQualityAntiAliased, kQualityClearType } mQuality = kQualityDefault;
-
   /** /todo 
    * @param size /todo
    * @param color /todo
    * @param font /todo
-   * @param style /todo
    * @param align /todo
    * @param valign /todo
    * @param orientation /todo
-   * @param quality /todo
    * @param TEBGColor /todo
    * @param TEFGColor /todo */
-  IText(int size = DEFAULT_TEXT_SIZE,
+  IText(float size = DEFAULT_TEXT_SIZE,
         const IColor& color = DEFAULT_TEXT_FGCOLOR,
         const char* font = nullptr,
-        EStyle style = kStyleNormal,
         EAlign align = kAlignCenter,
         EVAlign valign = kVAlignMiddle,
-        int orientation = 0,
-        EQuality quality = kQualityDefault,
+        float orientation = 0,
         const IColor& TEBGColor = DEFAULT_TEXTENTRY_BGCOLOR,
         const IColor& TEFGColor = DEFAULT_TEXTENTRY_FGCOLOR)
     : mSize(size)
     , mFGColor(color)
-    , mStyle(style)
     , mAlign(align)
     , mVAlign(valign)
     , mOrientation(orientation)
-    , mQuality(quality)
     , mTextEntryBGColor(TEBGColor)
     , mTextEntryFGColor(TEFGColor)
   {
@@ -580,7 +596,7 @@ struct IText
   /** /todo 
     * @param size /todo
     * @param valign /todo */
-  IText(int size, EVAlign valign)
+  IText(float size, EVAlign valign)
   : IText()
   {
     mSize = size;
@@ -590,27 +606,278 @@ struct IText
   /** /todo 
    * @param size /todo
    * @param align /todo */
-  IText(int size, EAlign align)
+  IText(float size, EAlign align)
   : IText()
   {
     mSize = size;
     mAlign = align;
   }
-
+    
   char mFont[FONT_LEN];
-  int mSize;
+  float mSize;
   IColor mFGColor;
   IColor mTextEntryBGColor;
   IColor mTextEntryFGColor;
-  int mOrientation = 0; // Degrees ccwise from normal.
-  mutable double mCachedScale = 1.0;
-
-#ifdef IGRAPHICS_LICE
-  mutable LICE_IFont* mCached = nullptr;
-#endif
+  float mOrientation = 0.f; // Degrees ccwise from normal.
 };
 
 const IText DEFAULT_TEXT = IText();
+
+/** Used to retrieve font info directly from a raw memory buffer. */
+class IFontInfo
+{
+public:
+  IFontInfo(const void* data, uint32_t dataSize, uint32_t faceIdx)
+  : mData(reinterpret_cast<const unsigned char*>(data)), mHeadLocation(0), mNameLocation(0), mHheaLocation(0), mMacStyle(0), mUnitsPerEM(0), mAscender(0), mDescender(0), mLineGap(0)
+  {
+    if (mData)
+      FindFace(faceIdx);
+    
+    if (mData)
+    {
+      mHeadLocation = LocateTable("head");
+      mNameLocation = LocateTable("name");
+      mHheaLocation = LocateTable("hhea");
+      mFDscLocation = LocateTable("fdsc");
+      
+      if (IsValid())
+      {
+        mUnitsPerEM = GetUInt16(mHeadLocation + 18);
+        mMacStyle = GetUInt16(mHeadLocation + 44);
+        mFamily = GetFontString(1);
+        mStyle = GetFontString(2);
+        mAscender = GetSInt16(mHheaLocation + 4);
+        mDescender = GetSInt16(mHheaLocation + 6);
+        mLineGap = GetSInt16(mHheaLocation + 8);
+      }
+    }
+  }
+  
+  bool IsValid() const       { return mData && mHeadLocation && mNameLocation && mHheaLocation; }
+  
+  const WDL_String& GetFamily() const   { return mFamily; }
+  const WDL_String& GetStyle() const    { return mStyle; }
+  
+  bool IsBold() const       { return mMacStyle & (1 << 0); }
+  bool IsItalic() const     { return mMacStyle & (1 << 1); }
+  bool IsUnderline() const  { return mMacStyle & (1 << 2); }
+  bool IsOutline() const    { return mMacStyle & (1 << 3); }
+  bool IsShadow() const     { return mMacStyle & (1 << 4); }
+  bool IsCondensed() const  { return mMacStyle & (1 << 5); }
+  bool IsExpanded() const   { return mMacStyle & (1 << 6); }
+  
+  double GetHeightEMRatio() const { return mUnitsPerEM / static_cast<double>(mAscender - mDescender); }
+
+  uint16_t GetUnitsPerEM() const { return mUnitsPerEM; }
+  int16_t GetAscender() const    { return mAscender; }
+  int16_t GetDescender() const   { return mDescender; }
+  int16_t GetLineGap() const     { return mLineGap; }
+  int16_t GetLineHeight() const  { return (mAscender - mDescender) + mLineGap; }
+  
+private:
+  
+  bool MatchTag(uint32_t loc, const char* tag)
+  {
+    return mData[loc+0] == tag[0] && mData[loc+1] == tag[1] && mData[loc+2] == tag[2] && mData[loc+3] == tag[3];
+  }
+  
+  uint32_t LocateTable(const char *tag)
+  {
+    uint16_t numTables = GetUInt16(4);
+    
+    for (uint16_t i = 0; i < numTables; ++i)
+    {
+      uint32_t tableLocation = 12 + (16 * i);
+      if (MatchTag(tableLocation, tag))
+        return GetUInt32(tableLocation + 8);
+    }
+    
+    return 0;
+  }
+  
+  WDL_String GetFontString(int nameID)
+  {
+#ifdef OS_WIN
+    int platformID = 3;
+    int encodingID = 1;
+    int languageID = 0x409;
+#else
+    int platformID = 1;
+    int encodingID = 0;
+    int languageID = 0;
+#endif
+    
+    for (uint16_t i = 0; i < GetUInt16(mNameLocation + 2); ++i)
+    {
+      uint32_t loc = mNameLocation + 6 + (12 * i);
+      
+      if (platformID == GetUInt16(loc + 0) && encodingID == GetUInt16(loc + 2)
+          && languageID == GetUInt16(loc + 4) && nameID == GetUInt16(loc + 6))
+      {
+        uint32_t stringLocation = GetUInt16(mNameLocation + 4) + GetUInt16(loc + 10);
+        uint16_t length = GetUInt16(loc + 8);
+        
+#ifdef OS_WIN
+        WDL_TypedBuf<WCHAR> utf16;
+        WDL_TypedBuf<char> utf8;
+        
+        utf16.Resize(length / sizeof(WCHAR));
+        
+        for (int j = 0; j < length; j++)
+          utf16.Get()[j] = GetUInt16(mNameLocation + stringLocation + j * 2);
+        
+        int convertedLength = WideCharToMultiByte(CP_UTF8, 0, utf16.Get(), utf16.GetSize(), 0, 0, NULL, NULL);
+        utf8.Resize(convertedLength);
+        WideCharToMultiByte(CP_UTF8, 0, utf16.Get(), utf16.GetSize(), utf8.Get(), utf8.GetSize(), NULL, NULL);
+        return WDL_String(utf8.Get(), convertedLength);
+#else
+        return WDL_String((const char*)(mData + mNameLocation + stringLocation), length);
+#endif
+      }
+    }
+    
+    return WDL_String();
+  }
+  
+  void FindFace(uint32_t faceIdx)
+  {
+    bool singleFont = IsSingleFont();
+    
+    if (singleFont && faceIdx == 0 )
+      return;
+    
+    // Check if it's a TTC file
+    if (!singleFont && MatchTag(0, "ttcf"))
+    {
+      // Check version
+      if (GetUInt32(4) == 0x00010000 || GetUInt32(4) == 0x00020000)
+      {
+        if (faceIdx < GetSInt32(8))
+        {
+          mData += GetUInt32(12 + faceIdx * 4);
+          return;
+        }
+      }
+    }
+    mData = nullptr;
+  }
+  
+  bool IsSingleFont()
+  {
+    char TTV1[4] = { '1', 0, 0, 0 };
+    char OTV1[4] = { 0, 1, 0, 0 };
+    
+    // Check the version number
+    if (MatchTag(0, TTV1)) return true;   // TrueType 1
+    if (MatchTag(0, "typ1")) return true; // TrueType with type 1 font -- we don't support this!
+    if (MatchTag(0, "OTTO")) return true; // OpenType with CFF
+    if (MatchTag(0, OTV1))  return true;  // OpenType 1.0
+    
+    return false;
+  }
+  
+#if defined WDL_LITTLE_ENDIAN
+  uint16_t   GetUInt16(uint32_t loc)  { return (((uint16_t)mData[loc + 0]) << 8) | (uint16_t)mData[loc + 1]; }
+  int16_t    GetSInt16(uint32_t loc)  { return (((uint16_t)mData[loc + 0]) << 8) | (uint16_t)mData[loc + 1]; }
+  uint32_t   GetUInt32(uint32_t loc)  { return (((uint32_t)GetUInt16(loc + 0)) << 16) | (uint32_t)GetUInt16(loc + 2); }
+  int32_t    GetSInt32(uint32_t loc)  { return (((uint32_t)GetUInt16(loc + 0)) << 16) | (uint32_t)GetUInt16(loc + 2); }
+#else
+  uint16_t   GetUInt16(uint32_t loc)  { return (((uint16_t)mData[loc + 1]) << 8) | (uint16_t)mData[loc + 0]; }
+  int16_t    GetSInt16(uint32_t loc)  { return (((uint16_t)mData[loc + 1]) << 8) | (uint16_t)mData[loc + 0]; }
+  uint32_t   GetUInt32(uint32_t loc)  { return (((uint32_t)GetUInt16(loc + 2)) << 16) | (uint32_t)GetUInt16(loc + 0); }
+  int32_t    GetSInt32(uint32_t loc)  { return (((uint32_t)GetUInt16(loc + 2)) << 16) | (uint32_t)GetUInt16(loc + 0); }
+#endif
+  
+  // Data
+  const unsigned char* mData;
+  
+  uint32_t mHeadLocation;
+  uint32_t mNameLocation;
+  uint32_t mHheaLocation;
+  uint32_t mFDscLocation;
+  
+  // Font Identifiers
+  WDL_String mFamily;
+  WDL_String mStyle;
+  uint16_t mMacStyle;
+  
+  // Metrics
+  uint16_t mUnitsPerEM;
+  int16_t mAscender;
+  int16_t mDescender;
+  int16_t mLineGap;
+};
+
+/** Used to manage raw font data. */
+class IFontData : public IFontInfo, private WDL_TypedBuf<unsigned char>
+{
+public:
+    IFontData() : IFontInfo(nullptr, 0, -1), mFaceIdx(-1) {}
+    
+    IFontData(const void* data, int size, int faceIdx) : IFontInfo(data, size, faceIdx), mFaceIdx(faceIdx)
+    {
+        const unsigned char* src = reinterpret_cast<const unsigned char*>(data);
+        unsigned char* dest = ResizeOK(size);
+        
+        if (dest)
+            std::copy(src, src + size, dest);
+    }
+    
+    IFontData(int size) : IFontInfo(nullptr, 0, -1), mFaceIdx(-1)
+    {
+      Resize(size);
+    }
+    
+    void SetFaceIdx(int faceIdx)
+    {
+      mFaceIdx = faceIdx;
+      static_cast<IFontData&>(*this) = IFontData(Get(), GetSize(), mFaceIdx);
+    }
+    
+    bool IsValid() const { return GetSize() && mFaceIdx >= 0 && IFontInfo::IsValid(); }
+    
+    unsigned char* Get() { return WDL_TypedBuf<unsigned char>::Get(); }
+    int GetSize() const { return WDL_TypedBuf<unsigned char>::GetSize(); }
+    int GetFaceIdx() const { return mFaceIdx; }
+    
+private:
+    int mFaceIdx;
+};
+
+/** IFontDataPtr is a managed pointer for transferring the ownership of font data */
+typedef std::unique_ptr<IFontData> IFontDataPtr;
+
+/** /todo */
+class PlatformFont
+{
+public:
+  PlatformFont(bool system) : mSystem(system) {}
+  virtual ~PlatformFont() {}
+  virtual FontDescriptor GetDescriptor() { return nullptr; }
+  virtual IFontDataPtr GetFontData() { return IFontDataPtr(new IFontData()); }
+  bool IsSystem() { return mSystem; }
+    
+protected:
+  int GetFaceIdx(const void* data, int dataSize, const char* styleName)
+  {
+    for (int idx = 0; ; idx++)
+    {
+      IFontInfo fontInfo(data, dataSize, idx);
+      
+      if (!fontInfo.IsValid())
+      return -1;
+      
+      const WDL_String& style = fontInfo.GetStyle();
+      
+      if (style.GetLength() && (!styleName[0] || !strcmp(style.Get(), styleName)))
+      return idx;
+    }
+  }
+
+  bool mSystem;
+};
+
+typedef std::unique_ptr<PlatformFont> PlatformFontPtr;
 
 /** Used to manage a rectangular area, independent of draw class/platform.
  * An IRECT is always specified in 1:1 pixels, any scaling for high DPI happens in the drawing class.
@@ -870,52 +1137,52 @@ struct IRECT
    * @return IRECT /todo */
   inline IRECT GetFromBRHC(float w, float h) const { return IRECT(R-w, B-h, R, B); }
 
-  /** /todo 
-   * @param amount /todo
-   * @return IRECT /todo */
+  /** Get a subrect of this IRECT bounded in Y by the top edge and 'amount'
+   * @param amount Size in Y of the desired IRECT
+   * @return IRECT The resulting subrect */
   inline IRECT GetFromTop(float amount) const { return IRECT(L, T, R, T+amount); }
 
-  /** /todo 
-   * @param amount /todo
-   * @return IRECT /todo */
+  /** Get a subrect of this IRECT bounded in Y by 'amount' and the bottom edge
+   * @param amount Size in Y of the desired IRECT
+   * @return IRECT The resulting subrect */
   inline IRECT GetFromBottom(float amount) const { return IRECT(L, B-amount, R, B); }
 
-  /** /todo 
-   * @param amount /todo
-   * @return IRECT /todo */
+  /** Get a subrect of this IRECT bounded in X by the left edge and 'amount'
+   * @param amount Size in X of the desired IRECT
+   * @return IRECT The resulting subrect */
   inline IRECT GetFromLeft(float amount) const { return IRECT(L, T, L+amount, B); }
 
-  /** /todo 
-   * @param amount /todo
-   * @return IRECT /todo */
+  /** Get a subrect of this IRECT bounded in X by 'amount' and the right edge
+   * @param amount Size in X of the desired IRECT
+   * @return IRECT The resulting subrect */
   inline IRECT GetFromRight(float amount) const { return IRECT(R-amount, T, R, B); }
   
-  /** /todo 
-   * @param amount /todo
-   * @return IRECT /todo */
+  /** Get a subrect of this IRECT reduced in height from the top edge by 'amount'
+   * @param amount Size in Y to reduce by
+   * @return IRECT The resulting subrect */
   inline IRECT GetReducedFromTop(float amount) const { return IRECT(L, T+amount, R, B); }
 
-  /** /todo 
-   * @param amount /todo
-   * @return IRECT /todo */
+  /** Get a subrect of this IRECT reduced in height from the bottom edge by 'amount'
+   * @param amount Size in Y to reduce by
+   * @return IRECT The resulting subrect */
   inline IRECT GetReducedFromBottom(float amount) const { return IRECT(L, T, R, B-amount); }
 
-  /** /todo
-   * @param amount /todo
-   * @return IRECT /todo */
+  /** Get a subrect of this IRECT reduced in width from the left edge by 'amount'
+   * @param amount Size in X to reduce by
+   * @return IRECT The resulting subrect */
   inline IRECT GetReducedFromLeft(float amount) const { return IRECT(L+amount, T, R, B); }
 
-  /** /todo 
-   * @param amount /todo
-   * @return IRECT /todo  */
+  /** Get a subrect of this IRECT reduced in width from the right edge by 'amount'
+   * @param amount Size in X to reduce by
+   * @return IRECT The resulting subrect */
   inline IRECT GetReducedFromRight(float amount) const { return IRECT(L, T, R-amount, B); }
   
-  /** /todo 
-   * @param row /todo
-   * @param col /todo
-   * @param nRows /todo
-   * @param nColumns /todo
-   * @return IRECT /todo */
+  /** Get a subrect (by row, column) of this IRECT which is a cell in a grid of size (nRows * nColumns)
+   * @param row Row index of the desired subrect
+   * @param col Column index of the desired subrect
+   * @param nRows Number of rows in the cell grid
+   * @param nColumns Number of columns in the cell grid
+   * @return IRECT The resulting subrect */
   inline IRECT GetGridCell(int row, int col, int nRows, int nColumns/*, EDirection = kHorizontal*/) const
   {
     assert(row * col <= nRows * nColumns); // not enough cells !
@@ -924,12 +1191,12 @@ struct IRECT
     return vrect.SubRectHorizontal(nColumns, col);
   }
   
-  /** /todo 
-   * @param cellIndex /todo
-   * @param nRows /todo
-   * @param nColumns /todo
-   * @param dir /todo
-   * @return IRECT /todo */
+  /** Get a subrect (by index) of this IRECT which is a cell in a grid of size (nRows * nColumns)
+   * @param cellIndex Index of the desired cell in the cell grid
+   * @param nRows Number of rows in the cell grid
+   * @param nColumns Number of columns in the cell grid
+   * @param dir Desired direction of indexing, by row (kHorizontal) or by column (kVertical)
+   * @return IRECT The resulting subrect */
   inline IRECT GetGridCell(int cellIndex, int nRows, int nColumns, EDirection dir = kHorizontal) const
   {
     assert(cellIndex <= nRows * nColumns); // not enough cells !
@@ -1428,20 +1695,23 @@ struct IRECT
 struct IKeyPress
 {
   int VK; // Windows VK_XXX
-  char Ascii;
+  char utf8[5] = {0}; // UTF8 key
   bool S, C, A; // SHIFT / CTRL(WIN) or CMD (MAC) / ALT
   
   /** /todo 
-   * @param ascii /todo
+   * @param _utf8 /todo
    * @param vk /todo
    * @param s /todo
    * @param c /todo
    * @param a /todo */
-  IKeyPress(char ascii, int vk, bool s = false, bool c = false, bool a = false)
+  IKeyPress(const char* _utf8, int vk, bool s = false, bool c = false, bool a = false)
   : VK(vk)
-  , Ascii(ascii)
   , S(s), C(c), A(a)
-  {}
+  {
+    strcpy(utf8, _utf8);
+  }
+  
+  void DBGPrint() const { DBGMSG("VK: %i\n", VK); }
 };
 
 /** Used to manage mouse modifiers i.e. right click and shift/control/alt keys. */

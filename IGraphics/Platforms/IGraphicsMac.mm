@@ -8,14 +8,11 @@
  ==============================================================================
 */
 
-#ifndef NO_IGRAPHICS
-
 #include "IGraphicsMac.h"
+#import "IGraphicsMac_view.h"
 
 #include "IControl.h"
 #include "IPopupMenuControl.h"
-
-#import "IGraphicsMac_view.h"
 
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
@@ -41,29 +38,22 @@ int GetSystemVersion()
   return v;
 }
 
-//#define IGRAPHICS_MAC_BLIT_BENCHMARK
-//#define IGRAPHICS_MAC_OLD_IMAGE_DRAWING
-
-#ifdef IGRAPHICS_MAC_BLIT_BENCHMARK
-#include <sys/time.h>
-static double gettm()
-{
-  struct timeval tm={0,};
-  gettimeofday(&tm,NULL);
-  return (double)tm.tv_sec + (double)tm.tv_usec/1000000;
-}
-#endif
-
+StaticStorage<CoreTextFontDescriptor> sFontDescriptorCache;
 #pragma mark -
 
 IGraphicsMac::IGraphicsMac(IGEditorDelegate& dlg, int w, int h, int fps, float scale)
 : IGRAPHICS_DRAW_CLASS(dlg, w, h, fps, scale)
 {
   NSApplicationLoad();
+  StaticStorage<CoreTextFontDescriptor>::Accessor storage(sFontDescriptorCache);
+  storage.Retain();
 }
 
 IGraphicsMac::~IGraphicsMac()
 {
+  StaticStorage<CoreTextFontDescriptor>::Accessor storage(sFontDescriptorCache);
+  storage.Release();
+  
   CloseWindow();
 }
 
@@ -78,15 +68,39 @@ bool IGraphicsMac::IsSandboxed()
   return false;
 }
 
-bool IGraphicsMac::MeasureText(const IText& text, const char* str, IRECT& bounds)
+PlatformFontPtr IGraphicsMac::LoadPlatformFont(const char* fontID, const char* fileNameOrResID)
+{
+  return CoreTextHelpers::LoadPlatformFont(fontID, fileNameOrResID, GetBundleID());
+}
+
+PlatformFontPtr IGraphicsMac::LoadPlatformFont(const char* fontID, const char* fontName, ETextStyle style)
+{
+  return CoreTextHelpers::LoadPlatformFont(fontID, fontName, style);
+}
+
+void IGraphicsMac::CachePlatformFont(const char* fontID, const PlatformFontPtr& font)
+{
+  CoreTextHelpers::CachePlatformFont(fontID, font, sFontDescriptorCache);
+}
+
+void IGraphicsMac::MeasureText(const IText& text, const char* str, IRECT& bounds) const
 {
 #ifdef IGRAPHICS_LICE
-  @autoreleasepool {
-    return IGRAPHICS_DRAW_CLASS::MeasureText(text, str, bounds);
+  @autoreleasepool
+  {
+    IGRAPHICS_DRAW_CLASS::MeasureText(text, str, bounds);
   }
 #else
-  return IGRAPHICS_DRAW_CLASS::MeasureText(text, str, bounds);
+  IGRAPHICS_DRAW_CLASS::MeasureText(text, str, bounds);
 #endif
+}
+
+void IGraphicsMac::ContextReady(void* pLayer)
+{
+  OnViewInitialized(pLayer);
+  SetScreenScale([[NSScreen mainScreen] backingScaleFactor]);
+  GetDelegate()->LayoutUI(this);
+  UpdateTooltips();
 }
 
 void* IGraphicsMac::OpenWindow(void* pParent)
@@ -95,20 +109,15 @@ void* IGraphicsMac::OpenWindow(void* pParent)
   CloseWindow();
   mView = (IGRAPHICS_VIEW*) [[IGRAPHICS_VIEW alloc] initWithIGraphics: this];
   
+#ifndef IGRAPHICS_GL // with OpenGL, we don't get given the glcontext until later, ContextReady will get called elsewhere
   IGRAPHICS_VIEW* pView = (IGRAPHICS_VIEW*) mView;
-
-  OnViewInitialized([pView layer]);
+  ContextReady([pView layer]);
+#endif
   
-  SetScreenScale([[NSScreen mainScreen] backingScaleFactor]);
-    
-  GetDelegate()->LayoutUI(this);
-
   if (pParent) // Cocoa VST host.
   {
     [(NSView*) pParent addSubview: (IGRAPHICS_VIEW*) mView];
   }
-
-  UpdateTooltips();
 
   return mView;
 }
@@ -117,11 +126,21 @@ void IGraphicsMac::CloseWindow()
 {
   if (mView)
   {
-    IGRAPHICS_VIEW* view = (IGRAPHICS_VIEW*) mView;
-    [view removeAllToolTips];
-    [view killTimer];
-    [view removeFromSuperview];
-    [view release];
+#ifdef IGRAPHICS_IMGUI
+    if(mImGuiView)
+    {
+      IGRAPHICS_IMGUIVIEW* pImGuiView = (IGRAPHICS_IMGUIVIEW*) mImGuiView;
+      [pImGuiView removeFromSuperview];
+      [pImGuiView release];
+      mImGuiView = nullptr;
+    }
+#endif
+    
+    IGRAPHICS_VIEW* pView = (IGRAPHICS_VIEW*) mView;
+    [pView removeAllToolTips];
+    [pView killTimer];
+    [pView removeFromSuperview];
+    [pView release];
       
     mView = nullptr;
     OnViewDestroyed();
@@ -144,6 +163,12 @@ void IGraphicsMac::PlatformResize()
     [NSAnimationContext beginGrouping]; // Prevent animated resizing
     [[NSAnimationContext currentContext] setDuration:0.0];
     [(IGRAPHICS_VIEW*) mView setFrameSize: size ];
+    
+#ifdef IGRAPHICS_IMGUI
+    if(mImGuiView)
+      [(IGRAPHICS_IMGUIVIEW*) mImGuiView setFrameSize: size ];
+#endif
+    
     [NSAnimationContext endGrouping];
   }  
 }
@@ -485,7 +510,7 @@ bool IGraphicsMac::PromptForColor(IColor& color, const char* str)
   return false;
 }
 
-IPopupMenu* IGraphicsMac::CreatePlatformPopupMenu(IPopupMenu& menu, const IRECT& bounds, IControl* pCaller)
+IPopupMenu* IGraphicsMac::CreatePlatformPopupMenu(IPopupMenu& menu, const IRECT& bounds)
 {
   IPopupMenu* pReturnMenu = nullptr;
 
@@ -499,29 +524,17 @@ IPopupMenu* IGraphicsMac::CreatePlatformPopupMenu(IPopupMenu& menu, const IRECT&
   if(pReturnMenu && pReturnMenu->GetFunction())
     pReturnMenu->ExecFunction();
 
-  if(pCaller)
-    pCaller->OnPopupMenuSelection(pReturnMenu); // should fire even if pReturnMenu == nullptr
-
   return pReturnMenu;
 }
 
-void IGraphicsMac::CreatePlatformTextEntry(IControl& control, const IText& text, const IRECT& bounds, const char* str)
+void IGraphicsMac::CreatePlatformTextEntry(int paramIdx, const IText& text, const IRECT& bounds, int length, const char* str)
 {
   if (mView)
   {
     NSRect areaRect = ToNSRect(this, bounds);
-    [(IGRAPHICS_VIEW*) mView createTextEntry: control: text: str: areaRect];
+    [(IGRAPHICS_VIEW*) mView createTextEntry: paramIdx : text: str: length: areaRect];
   }
 }
-
-//void IGraphicsMac::CreateWebView(const IRECT& bounds, const char* url)
-//{
-//  if (mView)
-//  {
-//    NSRect areaRect = ToNSRect(this, bounds);
-//    [(IGRAPHICS_VIEW*) mView createWebView:areaRect :url];
-//  }
-//}
 
 ECursor IGraphicsMac::SetMouseCursor(ECursor cursorType)
 {
@@ -576,7 +589,27 @@ bool IGraphicsMac::GetTextFromClipboard(WDL_String& str)
   }
 }
 
-//TODO: THIS IS TEMPORARY, TO EASE DEVELOPMENT
+bool IGraphicsMac::SetTextInClipboard(const WDL_String& str)
+{
+  NSString* pTextForClipboard = [NSString stringWithUTF8String:str.Get()];
+  [[NSPasteboard generalPasteboard] clearContents];
+  return [[NSPasteboard generalPasteboard] setString:pTextForClipboard forType:NSStringPboardType];
+}
+
+void IGraphicsMac::CreatePlatformImGui()
+{
+#ifdef IGRAPHICS_IMGUI
+  if(mView)
+  {
+    IGRAPHICS_VIEW* pView = (IGRAPHICS_VIEW*) mView;
+    
+    IGRAPHICS_IMGUIVIEW* pImGuiView = [[IGRAPHICS_IMGUIVIEW alloc] initWithIGraphicsView:pView];
+    [pView addSubview: pImGuiView];
+    mImGuiView = pImGuiView;
+  }
+#endif
+}
+
 #ifdef IGRAPHICS_AGG
   #include "IGraphicsAGG.cpp"
 #elif defined IGRAPHICS_CAIRO
@@ -586,5 +619,3 @@ bool IGraphicsMac::GetTextFromClipboard(WDL_String& str)
 #else
   #include "IGraphicsLice.cpp"
 #endif
-
-#endif// NO_IGRAPHICS

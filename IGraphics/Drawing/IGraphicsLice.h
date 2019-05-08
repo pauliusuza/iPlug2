@@ -90,7 +90,6 @@ public:
 
   void DrawBitmap(const IBitmap& bitmap, const IRECT& dest, int srcX, int srcY, const IBlend* pBlend) override;
   void DrawRotatedBitmap(const IBitmap& bitmap, float destCtrX, float destCtrY, double angle, int yOffsetZeroDeg, const IBlend* pBlend) override;
-  void DrawRotatedMask(const IBitmap& base, const IBitmap& mask, const IBitmap& top, float x, float y, double angle, const IBlend* pBlend) override;
   void DrawFittedBitmap(const IBitmap& bitmap, const IRECT& bounds, const IBlend* pBlend) override;
   
   void DrawPoint(const IColor& color, float x, float y, const IBlend* pBlend) override;
@@ -128,19 +127,23 @@ protected:
   APIBitmap* LoadAPIBitmap(const char* fileNameOrResID, int scale, EResourceLocation location, const char* ext) override;
   APIBitmap* CreateAPIBitmap(int width, int height, int scale, double drawScale) override;
 
+  bool LoadAPIFont(const char* fontID, const PlatformFontPtr& font) override;
+
   int AlphaChannel() const override { return LICE_PIXEL_A; }
   bool FlippedBitmap() const override { return false; }
 
   void GetLayerBitmapData(const ILayerPtr& layer, RawBitmapData& data) override;
   void ApplyShadowMask(ILayerPtr& layer, RawBitmapData& mask, const IShadow& shadow) override;
 
-  bool DoDrawMeasureText(const IText& text, const char* str, IRECT& bounds, const IBlend* pBlend, bool measure) override;
+  void DoMeasureText(const IText& text, const char* str, IRECT& bounds) const override;
+  void DoDrawText(const IText& text, const char* str, const IRECT& bounds, const IBlend* pBlend) override;
 
   void EndFrame() override;
     
   float GetBackingPixelScale() const override { return (float) GetScreenScale(); };
 
 private:
+  void PrepareAndMeasureText(const IText& text, const char* str, IRECT& r, LICE_IFont*& pFont) const;
     
   bool OpacityCheck(const IColor& color, const IBlend* pBlend)
   {
@@ -174,7 +177,7 @@ private:
     
   void UpdateLayer() override;
     
-  LICE_IFont* CacheFont(const IText& text, double scale);
+  LICE_IFont* CacheFont(const IText& text) const;
 
   IRECT mDrawRECT;
   IRECT mClipRECT;
@@ -183,7 +186,6 @@ private:
   int mDrawOffsetY = 0;
   
   std::unique_ptr<LICE_SysBitmap> mDrawBitmap;
-  std::unique_ptr<LICE_MemBitmap> mTmpBitmap;
 #ifdef OS_WIN
   std::unique_ptr<LICE_SysBitmap> mScaleBitmap;
 #endif
