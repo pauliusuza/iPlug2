@@ -36,6 +36,7 @@ public:
 #endif
 
   void CheckTabletInput(UINT msg);
+  void DestroyEditWindow();
     
   void HideMouseCursor(bool hide, bool lock) override;
   void MoveMouseCursor(float x, float y) override;
@@ -70,10 +71,11 @@ public:
   const char* GetPlatformAPIStr() override { return "win32"; };
 
   bool GetTextFromClipboard(WDL_String& str) override;
-
+  bool SetTextInClipboard(const WDL_String& str) override;
+  
 protected:
-  IPopupMenu* CreatePlatformPopupMenu(IPopupMenu& menu, const IRECT& bounds, IControl* pCaller) override;
-  void CreatePlatformTextEntry(IControl& control, const IText& text, const IRECT& bounds, const char* str) override;
+  IPopupMenu* CreatePlatformPopupMenu(IPopupMenu& menu, const IRECT& bounds) override;
+  void CreatePlatformTextEntry(int paramIdx, const IText& text, const IRECT& bounds, int length, const char* str) override;
 
   void SetTooltip(const char* tooltip);
   void ShowTooltip();
@@ -89,8 +91,12 @@ private:
     kCommit
   };
 
-  inline IMouseInfo IGraphicsWin::GetMouseInfo(LPARAM lParam, WPARAM wParam);
-  inline IMouseInfo IGraphicsWin::GetMouseInfoDeltas(float&dX, float& dY, LPARAM lParam, WPARAM wParam);
+  PlatformFontPtr LoadPlatformFont(const char* fontID, const char* fileNameOrResID) override;
+  PlatformFontPtr LoadPlatformFont(const char* fontID, const char* fontName, ETextStyle style) override;
+  void CachePlatformFont(const char* fontID, const PlatformFontPtr& font) override;
+
+  inline IMouseInfo GetMouseInfo(LPARAM lParam, WPARAM wParam);
+  inline IMouseInfo GetMouseInfoDeltas(float&dX, float& dY, LPARAM lParam, WPARAM wParam);
   bool MouseCursorIsLocked();
 
 #ifdef IGRAPHICS_GL
@@ -114,9 +120,13 @@ private:
   HWND mParentWnd = nullptr;
   HWND mMainWnd = nullptr;
   WNDPROC mDefEditProc = nullptr;
+  HFONT mEditFont = nullptr;
   DWORD mPID = 0;
 
-  IControl* mEdControl = nullptr;
+  const IParam* mEditParam = nullptr;
+  IText mEditText;
+  IRECT mEditRECT;
+
   EParamEditMsg mParamEditMsg = kNone;
   bool mShowingTooltip = false;
   float mHiddenCursorX;

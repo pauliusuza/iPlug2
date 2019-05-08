@@ -8,17 +8,13 @@
  ==============================================================================
 */
 
-#ifndef NO_IGRAPHICS
-
 #import <Cocoa/Cocoa.h>
-//#import <WebKit/WebKit.h>
-
-#include "IGraphicsMac.h"
 
 #if defined IGRAPHICS_GL
-#error IGRAPHICS_GL MACOS NOT IMPLEMENTED
-//#include <OpenGL/gl.h>
+#import <QuartzCore/QuartzCore.h>
 #endif
+
+#include "IGraphicsMac.h"
 
 inline NSRect ToNSRect(IGraphics* pGraphics, const IRECT& bounds)
 {
@@ -93,13 +89,11 @@ inline NSColor* ToNSColor(const IColor& c)
   NSTimer* mTimer;
   IGRAPHICS_TEXTFIELD* mTextFieldView;
   NSCursor* mMoveCursor;
-//  WKWebView* mWebView;
-  IControl* mEdControl; // the control linked to the open text edit
   float mPrevX, mPrevY;
+  IRECTList mDirtyRects;
 @public
   IGraphicsMac* mGraphics; // OBJC instance variables have to be pointers
 }
-//- (id) init;
 - (id) initWithIGraphics: (IGraphicsMac*) pGraphics;
 - (BOOL) isOpaque;
 - (BOOL) acceptsFirstResponder;
@@ -107,6 +101,7 @@ inline NSColor* ToNSColor(const IColor& c)
 - (void) viewDidMoveToWindow;
 - (void) viewDidChangeBackingProperties:(NSNotification *) notification;
 - (void) drawRect: (NSRect) bounds;
+- (void) render;
 - (void) onTimer: (NSTimer*) pTimer;
 - (void) killTimer;
 //mouse
@@ -128,11 +123,8 @@ inline NSColor* ToNSColor(const IColor& c)
 //text entry
 - (void) removeFromSuperview;
 - (void) controlTextDidEndEditing: (NSNotification*) aNotification;
-- (void) createTextEntry: (IControl&) control : (const IText&) text : (const char*) str : (NSRect) areaRect;
+- (void) createTextEntry: (int) paramIdx : (const IText&) text : (const char*) str : (int) length : (NSRect) areaRect;
 - (void) endUserInput;
-//web view
-//- (void) createWebView: (NSRect) areaRect : (const char*) url;
-//- (void) userContentController:didReceiveScriptMessage;
 //pop-up menu
 - (IPopupMenu*) createPopupMenu: (IPopupMenu&) menu : (NSRect) bounds;
 //tooltip
@@ -145,4 +137,22 @@ inline NSColor* ToNSColor(const IColor& c)
 - (void) setMouseCursor: (ECursor) cursorType;
 @end
 
-#endif //NO_IGRAPHICS
+@interface IGRAPHICS_GLLAYER : NSOpenGLLayer
+{
+  IGRAPHICS_VIEW* mView;
+}
+
+- (id) initWithIGraphicsView: (IGRAPHICS_VIEW*) pView;
+@end
+
+#ifdef IGRAPHICS_IMGUI
+#import <MetalKit/MetalKit.h>
+
+@interface IGRAPHICS_IMGUIVIEW : MTKView
+{
+  IGRAPHICS_VIEW* mView;
+}
+@property (nonatomic, strong) id <MTLCommandQueue> commandQueue;
+- (id) initWithIGraphicsView: (IGRAPHICS_VIEW*) pView;
+@end
+#endif

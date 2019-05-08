@@ -61,22 +61,29 @@ protected:
   APIBitmap* LoadAPIBitmap(const char* fileNameOrResID, int scale, EResourceLocation location, const char* ext) override;
   APIBitmap* CreateAPIBitmap(int width, int height, int scale, double drawScale) override;
 
+  bool LoadAPIFont(const char* fontID, const PlatformFontPtr& font) override;
+
   int AlphaChannel() const override { return 3; }
   bool FlippedBitmap() const override { return false; }
 
   void GetLayerBitmapData(const ILayerPtr& layer, RawBitmapData& data) override;
   void ApplyShadowMask(ILayerPtr& layer, RawBitmapData& mask, const IShadow& shadow) override;
 
-  bool DoDrawMeasureText(const IText& text, const char* str, IRECT& bounds, const IBlend* pBlend, bool measure) override;
-
+  void DoMeasureText(const IText& text, const char* str, IRECT& bounds) const override;
+  void DoDrawText(const IText& text, const char* str, const IRECT& bounds, const IBlend* pBlend) override;
+    
 private:
-  
-  val GetContext()
+  void PrepareAndMeasureText(const IText& text, const char* str, IRECT& r, double& x, double & y) const;
+    
+  val GetContext() const
   {
     val canvas = mLayers.empty() ? val::global("document").call<val>("getElementById", std::string("canvas")) : *(mLayers.top()->GetAPIBitmap()->GetBitmap());
       
     return canvas.call<val>("getContext", std::string("2d"));
   }
+    
+  void GetFontMetrics(const char* font, const char* style, double& ascenderRatio, double& EMRatio);
+  bool CompareFontMetrics(const char* style, const char* font1, const char* font2, int size);
     
   double XTranslate()  { return mLayers.empty() ? 0 : -mLayers.top()->Bounds().L; }
   double YTranslate()  { return mLayers.empty() ? 0 : -mLayers.top()->Bounds().T; }
