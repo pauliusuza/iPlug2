@@ -30,7 +30,7 @@ public:
   void* OpenWindow(void* pWindow) override;
   void CloseWindow() override;
   bool WindowIsOpen() override;
-  void PlatformResize() override;
+  void PlatformResize(bool parentHasResized) override;
   
   void PointToScreen(float& x, float& y);
   void ScreenToPoint(float& x, float& y);
@@ -41,7 +41,7 @@ public:
     
   void DoCursorLock(float x, float y, float& prevX, float& prevY);
     
-  int ShowMessageBox(const char* str, const char* caption, EMessageBoxType type) override;
+  EMsgBoxResult ShowMessageBox(const char* str, const char* caption, EMsgBoxType type, IMsgBoxCompletionHanderFunc completionHandler) override;
   void ForceEndUserEdit() override;
 
   const char* GetPlatformAPIStr() override;

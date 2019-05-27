@@ -319,7 +319,7 @@ LRESULT CALLBACK IGraphicsWin::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARA
           TrackMouseEvent(&eventTrack);
         }
       }
-      else if (GetCapture() == hWnd && !pGraphics->mParamEditWnd)
+      else if (GetCapture() == hWnd && !pGraphics->IsInTextEntry())
       {
         float dX, dY;
         IMouseInfo info = pGraphics->GetMouseInfoDeltas(dX, dY, lParam, wParam);
@@ -435,7 +435,7 @@ LRESULT CALLBACK IGraphicsWin::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARA
       HRGN region = CreateRectRgn(0, 0, 0, 0);
       int regionType = GetUpdateRgn(hWnd, region, FALSE);
 
-      if ((regionType == COMPLEXREGION) || (regionType = SIMPLEREGION))
+      if ((regionType == COMPLEXREGION) || (regionType == SIMPLEREGION))
       {
         #ifdef IGRAPHICS_GL
         pGraphics->ActivateGLContext();
@@ -483,7 +483,8 @@ LRESULT CALLBACK IGraphicsWin::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARA
       SetBkColor(dc, RGB(text.mTextEntryBGColor.R, text.mTextEntryBGColor.G, text.mTextEntryBGColor.B));
       SetTextColor(dc, RGB(text.mTextEntryFGColor.R, text.mTextEntryFGColor.G, text.mTextEntryFGColor.B));
       SetBkMode(dc, OPAQUE);
-      return GetStockObject(DC_BRUSH) != 0;
+      SetDCBrushColor(dc, RGB(text.mTextEntryBGColor.R, text.mTextEntryBGColor.G, text.mTextEntryBGColor.B));
+      return (LRESULT)GetStockObject(DC_BRUSH);
     }
     case WM_DROPFILES:
     {
@@ -669,7 +670,7 @@ void IGraphicsWin::ForceEndUserEdit()
 
 #define SETPOS_FLAGS SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE
 
-void IGraphicsWin::PlatformResize()
+void IGraphicsWin::PlatformResize(bool parentHasResized)
 {
   if (WindowIsOpen())
   {
@@ -692,18 +693,15 @@ void IGraphicsWin::PlatformResize()
 
     SetWindowPos(mPlugWnd, 0, 0, 0, dlgW + dw, dlgH + dh, SETPOS_FLAGS);
 
-    // don't want to touch the host window in VST3
-#ifndef VST3_API
-    if(pParent)
+    if(pParent && !parentHasResized)
     {
       SetWindowPos(pParent, 0, 0, 0, parentW + dw, parentH + dh, SETPOS_FLAGS);
     }
 
-    if(pGrandparent)
+    if(pGrandparent && !parentHasResized)
     {
       SetWindowPos(pGrandparent, 0, 0, 0, grandparentW + dw, grandparentH + dh, SETPOS_FLAGS);
     }
-#endif
 
     RECT r = { 0, 0, WindowWidth(), WindowHeight() };
     InvalidateRect(mPlugWnd, &r, FALSE);
@@ -867,10 +865,16 @@ void IGraphicsWin::DeactivateGLContext()
 }
 #endif
 
-int IGraphicsWin::ShowMessageBox(const char* text, const char* caption, EMessageBoxType type)
+EMsgBoxResult IGraphicsWin::ShowMessageBox(const char* text, const char* caption, EMsgBoxType type, IMsgBoxCompletionHanderFunc completionHandler)
 {
   ReleaseMouseCapture();
-  return MessageBox(GetMainWnd(), text, caption, (int) type);
+  
+  EMsgBoxResult result = static_cast<EMsgBoxResult>(MessageBox(GetMainWnd(), text, caption, static_cast<int>(type)));
+  
+  if(completionHandler)
+    completionHandler(result);
+  
+  return result;
 }
 
 void* IGraphicsWin::OpenWindow(void* pParent)
