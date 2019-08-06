@@ -117,7 +117,7 @@ bool IPlugAPPHost::InitState()
       mState.mAudioOutChanR = GetPrivateProfileInt("audio", "out2", 2, mINIPath.Get());
       //mState.mAudioInIsMono = GetPrivateProfileInt("audio", "monoinput", 0, mINIPath.Get());
 
-      mState.mBufferSize = GetPrivateProfileInt("audio", "buffer", 512, mINIPath.Get());
+      mState.mBufferSize = GetPrivateProfileInt("audio", "buffer", APP_DEFAULT_BUFFER_SIZE, mINIPath.Get());
       mState.mAudioSR = GetPrivateProfileInt("audio", "sr", 44100, mINIPath.Get());
 
       //midi
@@ -665,21 +665,20 @@ void IPlugAPPHost::TogglePlay(bool toggle)
     midiStop.mStatus = 0xFC;
     mIPlug->SendMidiMsg(midiStop);
     mTimeInfo.mSamplePos = 0;
+    mTimeInfo.mPPQPos = 0;
   }
+  // this is needed here to force the update of the GUI of the transport bar
   mIPlug->SetTimeInfo(mTimeInfo);
 }
 
 void IPlugAPPHost::SetBPM(double BPM)
 {
   mTimeInfo.mTempo = BPM;
-  mIPlug->SetTimeInfo(mTimeInfo);
 }
 
 void IPlugAPPHost::CountClock(double deltatime)
 {
   mMidiMaster = false;
-  mTimeInfo.mPPQPos += 1./24.;
-  mIPlug->SetTimeInfo(mTimeInfo);
   mLastClockCount++;
   if (mLastClockCount == 24) {
     double bpm = 60.0 / 24.0 / deltatime;
@@ -696,6 +695,10 @@ int IPlugAPPHost::AudioCallback(void* pOutputBuffer, void* pInputBuffer, uint32_
     std::cout << "Stream underflow detected!" << std::endl;
 
   IPlugAPPHost* _this = sInstance.get();
+  // safety...
+  if(_this == nullptr) {
+    return 0;
+  }
 
   double* pInputBufferD = static_cast<double*>(pInputBuffer);
   double* pOutputBufferD = static_cast<double*>(pOutputBuffer);
@@ -718,11 +721,10 @@ int IPlugAPPHost::AudioCallback(void* pOutputBuffer, void* pInputBuffer, uint32_
 
 #if APP_HAS_TRANSPORT_BAR
         // set the timeinfo stuff for the plugin code
+        double samplesPerBeat = (double)(_this->mSampleRate * 60) / (double)_this->mTimeInfo.mTempo;
         if(_this->mTimeInfo.mTransportIsRunning) {
           if(_this->mMidiMaster) {
-            unsigned int samplesPerBeat = (_this->mSampleRate * 60) / _this->mTimeInfo.mTempo;
             int samplesPerMidiClock = samplesPerBeat / 24;
-            _this->mTimeInfo.mPPQPos = (double)_this->mTimeInfo.mSamplePos / samplesPerBeat;
             if(_this->mMidiOut) {
               for (int spl = 0; spl < APP_SIGNAL_VECTOR_SIZE; spl++) {
                 if((int)(_this->mTimeInfo.mSamplePos + spl) % samplesPerMidiClock == 0) {
@@ -742,8 +744,10 @@ int IPlugAPPHost::AudioCallback(void* pOutputBuffer, void* pInputBuffer, uint32_
         _this->mIPlug->AppProcess(inputs, outputs, APP_SIGNAL_VECTOR_SIZE);
         _this->mSamplesElapsed += APP_SIGNAL_VECTOR_SIZE;
         
-        if(_this->mTimeInfo.mTransportIsRunning)
+        if(_this->mTimeInfo.mTransportIsRunning) {
           _this->mTimeInfo.mSamplePos += APP_SIGNAL_VECTOR_SIZE;
+          _this->mTimeInfo.mPPQPos += (double)APP_SIGNAL_VECTOR_SIZE / samplesPerBeat;
+        }
 #endif
       }
 
@@ -815,7 +819,6 @@ void IPlugAPPHost::MIDICallback(double deltatime, std::vector<uint8_t>* pMsg, vo
     int midiSPP = (pMsg->at(2) << 7) + pMsg->at(1);
     int clocks = midiSPP * 6;
     _this->mTimeInfo.mPPQPos = clocks / 24.;
-    _this->mIPlug->SetTimeInfo(_this->mTimeInfo);
   }
 #endif
   else if (pMsg->size())
