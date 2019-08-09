@@ -78,7 +78,6 @@ public:
   : IControl(bounds)
   , IVectorBase(style)
   {
-  
     // bpm width is 2 times height
     mBpmRect = IRECT(bounds.L,bounds.T,bounds.L+bounds.H()*3, bounds.B);
     mBpmRect.ScaleAboutCentre(0.65);
@@ -125,6 +124,12 @@ public:
     }
   }
   
+  /**
+   * Manages highlight of buttons and cursor for dragging on BPM box
+   * @param x The X coordinate of the mouse event
+   * @param y The Y coordinate of the mouse event
+   * @param mod A struct indicating which modifier keys are held for the event
+   */
   void OnMouseOver(float x, float y, const IMouseMod& mod) override
   {
     mMouseOverPlay = false;
@@ -143,7 +148,26 @@ public:
     } else if(mSaveBtnRect.Contains(x,y)) {
       mMouseOverSave = true;
       SetDirty(false);
+    } else if(mBpmRect.Contains(x,y)) {
+      GetUI()->SetMouseCursor(ECursor::SIZENS);
+      SetDirty(false);
+    } else {
+      GetUI()->SetMouseCursor(ECursor::ARROW);
+      SetDirty(false);
     }
+  }
+  
+  /**
+   * Records the position of the first mous down event to be able to track drag
+   * in different areas of the transposrt bar
+   * @param x The X coordinate of the mouse event
+   * @param y The Y coordinate of the mouse event
+   * @param mod A struct indicating which modifier keys are held for the event
+   */
+  void OnMouseDown(float x, float y, const IMouseMod& mod) override
+  {
+    mXdwn = x;
+    mYdwn = y;
   }
   
   /**
@@ -155,6 +179,8 @@ public:
    */
   void OnMouseUp(float x, float y, const IMouseMod& mod) override
   {
+    mXdwn = -1;
+    mYdwn = -1;
     if (mBpmRect.Contains(x,y)) {
       std::string bpm = std::to_string(mBPMVal).substr(0, std::to_string(mBPMVal).find(".") + 3);
       GetUI()->CreateTextEntry(*this, mStyle.valueText, mBpmRect, bpm.c_str(), EMsgTags::bpm);
@@ -178,6 +204,23 @@ public:
       bool newProject = true;
       GetDelegate()->SendArbitraryMsgFromUI(EMsgTags::blank, mTag, sizeof(bool), &newProject);
 #endif
+    }
+  }
+  
+  /**
+   * Changes the BPM value of the tempo box dragging them up and down
+   * @param x The X coordinate of the mouse event
+   * @param y The Y coordinate of the mouse event
+   * @param dX The X delta (difference) since the last event
+   * @param dY The Y delta (difference) since the last event
+   * @param mod A struct indicating which modifier keys are held for the event */
+  void OnMouseDrag(float x, float y, float dX, float dY, const IMouseMod& mod) override
+  {
+    if(mBpmRect.Contains(mXdwn, mYdwn)) {
+      double gearing = DEFAULT_GEARING/10.;
+      mBPMVal = (mBPMVal + (double)dY / (double)(mBpmRect.T - mBpmRect.B) / gearing);
+      GetDelegate()->SendArbitraryMsgFromUI(EMsgTags::bpm, mTag, sizeof(int), &mBPMVal);
+      SetDirty(false);
     }
   }
 
@@ -285,6 +328,8 @@ private:
   bool mMouseOverNew = false;
   bool mMouseOverOpen = false;
   bool mMouseOverSave = false;
+  float mXdwn = -1;
+  float mYdwn = -1;
   IRECT mBpmRect;
   IRECT mPlayBtnRect;
   IRECT mOpenBtnRect;
