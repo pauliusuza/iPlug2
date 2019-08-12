@@ -312,6 +312,9 @@ void IPlugAAX::RenderAudio(AAX_SIPlugRenderInfo* pRenderInfo)
       timeInfo.mPPQPos = 0;
     }
     
+    if(timeInfo.mPPQPos < 0)
+      timeInfo.mPPQPos = 0;
+ 
     mTransport->GetCurrentNativeSampleLocation(&samplePos);
     timeInfo.mSamplePos = (double) samplePos;
     
