@@ -14,17 +14,24 @@
 /** @file
  * @brief This file includes classes for implementing timers - in order to get a regular callback on the main thread
  * The interface is partially based on the api of Steinberg's timer.cpp from the VST3_SDK for compatibility,
- * rewritten using SWELL: base/source/timer.cpp, so thanks to them 
+ * base/source/timer.cpp, so thanks to them 
  * */
 
 #include <cstring>
 #include <stdint.h>
 #include <cstring>
+#include <cmath>
 #include <functional>
 #include "ptrlist.h"
 #include "mutex.h"
 
 #include "IPlugPlatform.h"
+
+#if defined OS_MAC || defined OS_IOS
+#include <CoreFoundation/CoreFoundation.h>
+#endif
+
+BEGIN_IPLUG_NAMESPACE
 
 #if defined OS_WEB
 /** Base class for timer */
@@ -63,8 +70,6 @@ struct Timer
 
 #if defined OS_MAC || defined OS_IOS
 
-#include <CoreFoundation/CoreFoundation.h>
-
 class Timer_impl : public Timer
 {
 public:
@@ -100,3 +105,5 @@ private:
 #elif
   #error NOT IMPLEMENTED
 #endif
+
+END_IPLUG_NAMESPACE

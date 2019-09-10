@@ -18,9 +18,15 @@
 #include <string>
 #include <map>
 
+#if defined OS_IOS
+#import <Foundation/Foundation.h>
+#endif
+
 #ifdef IGRAPHICS_METAL
 extern std::map<std::string, void*> gTextureMap;
 #endif
+
+BEGIN_IPLUG_NAMESPACE
 
 #ifdef OS_MAC
 void HostPath(WDL_String& path, const char* bundleID)
@@ -196,7 +202,7 @@ bool GetResourcePathFromSharedLocation(const char* fileName, const char* searchE
   }
 }
 
-EResourceLocation LocateResource(const char* name, const char* type, WDL_String& result, const char* bundleID, void*)
+EResourceLocation LocateResource(const char* name, const char* type, WDL_String& result, const char* bundleID, void*, const char* sharedResourcesSubPath)
 {
   if(CStringHasContents(name))
   {
@@ -205,7 +211,7 @@ EResourceLocation LocateResource(const char* name, const char* type, WDL_String&
       return EResourceLocation::kAbsolutePath;
     
     // then check ~/Music/PLUG_NAME, which is a shared folder that can be accessed from app sandbox
-    if(GetResourcePathFromSharedLocation(name, type, result, "VirtualCZ")) //TODO: Hardcoded! This will change
+    if(GetResourcePathFromSharedLocation(name, type, result, sharedResourcesSubPath))
       return EResourceLocation::kAbsolutePath;
     
     // finally check name, which might be a full path - if the plug-in is trying to load a resource at runtime (e.g. skin-able UI)
@@ -222,8 +228,6 @@ EResourceLocation LocateResource(const char* name, const char* type, WDL_String&
 
 #elif defined OS_IOS
 #pragma mark - IOS
-#import <Foundation/Foundation.h>
-
 
 void HostPath(WDL_String& path, const char* bundleID)
 {
@@ -319,7 +323,7 @@ bool GetResourcePathFromBundle(const char* fileName, const char* searchExt, WDL_
   }
 }
 
-EResourceLocation LocateResource(const char* name, const char* type, WDL_String& result, const char* bundleID, void*)
+EResourceLocation LocateResource(const char* name, const char* type, WDL_String& result, const char* bundleID, void*, const char*)
 {
   if(CStringHasContents(name))
   {
@@ -341,3 +345,5 @@ EResourceLocation LocateResource(const char* name, const char* type, WDL_String&
 }
 
 #endif
+
+END_IPLUG_NAMESPACE

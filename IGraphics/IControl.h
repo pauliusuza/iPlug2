@@ -33,6 +33,9 @@
 
 #include "IGraphics.h"
 
+BEGIN_IPLUG_NAMESPACE
+BEGIN_IGRAPHICS_NAMESPACE
+
 /** The lowest level base class of an IGraphics control. A control is anything on the GUI 
 *  @ingroup BaseControls */
 class IControl
@@ -1389,7 +1392,7 @@ public:
     {
       if (!g.CheckLayer(mLayer))
       {
-        g.StartLayer(mRECT);
+        g.StartLayer(this, mRECT);
         g.DrawSVG(mSVG, mRECT);
         mLayer = g.EndLayer();
       }
@@ -1415,19 +1418,21 @@ private:
 class ITextControl : public IControl
 {
 public:
-  ITextControl(const IRECT& bounds, const char* str = "", const IText& text = DEFAULT_TEXT, const IColor& BGColor = DEFAULT_BGCOLOR);
+  ITextControl(const IRECT& bounds, const char* str = "", const IText& text = DEFAULT_TEXT, const IColor& BGColor = DEFAULT_BGCOLOR, bool setBoundsBasedOnStr = false);
 
   void Draw(IGraphics& g) override;
-
+  void OnInit() override;
+  
   virtual void SetStr(const char* str);
   virtual void SetStrFmt(int maxlen, const char* fmt, ...);
   virtual void ClearStr() { SetStr(""); }
   
-  void SetBoundsBasedOnTextDimensions();
+  void SetBoundsBasedOnStr();
   
 protected:
   WDL_String mStr;
   IColor mBGColor;
+  bool mSetBoundsBasedOnStr = false;
 };
 
 class IURLControl : public ITextControl
@@ -1473,5 +1478,30 @@ protected:
   bool mShowParamLabel;
   IRECT mTri;
 };
+
+/** A control to use as a placeholder during development */
+class PlaceHolder : public ITextControl
+{
+public:
+  PlaceHolder(const IRECT& bounds, const char* str = "Place Holder");
+  
+  void Draw(IGraphics& g) override;
+  void OnMouseDblClick(float x, float y, const IMouseMod& mod) override { GetUI()->CreateTextEntry(*this, mText, mRECT, mStr.Get()); }
+  void OnTextEntryCompletion(const char* str, int valIdx) override { SetStr(str); }
+  void OnResize() override;
+
+protected:
+  IRECT mCentreLabelBounds;
+  WDL_String mTLHCStr;
+  WDL_String mWidthStr;
+  WDL_String mHeightStr;
+  IText mTLGCText = DEFAULT_TEXT.WithAlign(EAlign::Near);
+  IText mWidthText = DEFAULT_TEXT;
+  IText mHeightText = DEFAULT_TEXT.WithAngle(270.f);
+  static constexpr float mInset = 10.f;
+};
+
+END_IGRAPHICS_NAMESPACE
+END_IPLUG_NAMESPACE
 
 /**@}*/

@@ -23,6 +23,9 @@
 #include "IPlugParameter.h"
 #include "IPlugLogger.h"
 
+using namespace iplug;
+using namespace igraphics;
+
 static int MacKeyCodeToVK(int code)
 {
   switch (code)
@@ -236,11 +239,6 @@ static int MacKeyEventToVK(NSEvent* pEvent, int& flag)
 }
 
 @end
-
-inline int GetMouseOver(IGraphicsMac* pGraphics)
-{
-  return pGraphics->GetMouseOver();
-}
 
 // IGRAPHICS_TEXTFIELDCELL based on...
 
@@ -681,7 +679,7 @@ extern StaticStorage<CoreTextFontDescriptor> sFontDescriptorCache;
   IMouseInfo info = [self getMouseLeft:pEvent];
   if (mGraphics)
   {
-    if ([pEvent clickCount] > 1)
+    if (([pEvent clickCount] - 1) % 2)
     {
       mGraphics->OnMouseDblClick(info.x, info.y, info.ms);
     }

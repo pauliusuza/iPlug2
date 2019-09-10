@@ -16,6 +16,9 @@
 
 #include "IControls.h"
 
+using namespace iplug;
+using namespace igraphics;
+
 #pragma mark - VECTOR CONTROLS
 
 const IColor IVKeyboardControl::DEFAULT_BK_COLOR = IColor(255, 70, 70, 70);
@@ -1051,7 +1054,7 @@ void IVPlotControl::Draw(IGraphics& g)
   {
     if (!g.CheckLayer(mLayer))
     {
-      g.StartLayer(mRECT);
+      g.StartLayer(this, mRECT);
       drawFunc();
       mLayer = g.EndLayer();
     }

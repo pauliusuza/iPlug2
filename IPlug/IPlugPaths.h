@@ -17,6 +17,8 @@
 
 #include "IPlugUtilities.h"
 
+BEGIN_IPLUG_NAMESPACE
+
 #if defined OS_MAC || defined OS_IOS
 using PluginIDType = const char *;
 #elif defined OS_WIN
@@ -80,7 +82,7 @@ extern void INIPath(WDL_String& path, const char * pluginName);
  * @param type The resource type (file extension) in lower or upper case, e.g. ttf or TTF for a truetype font
  * @param result WDL_String which will either contain the full path to the resource on disk, or the ful Windows resourceID on success
  * @return \c true on success */
-extern EResourceLocation LocateResource(const char* fileNameOrResID, const char* type, WDL_String& result, const char* bundleID, void* pHInstance);
+extern EResourceLocation LocateResource(const char* fileNameOrResID, const char* type, WDL_String& result, const char* bundleID, void* pHInstance, const char* sharedResourcesSubPath);
 
 /** Load a resource from the binary (windows only).
  * @param type The resource type in lower or upper case, e.g. ttf or TTF for a truetype font
@@ -90,3 +92,6 @@ extern const void* LoadWinResource(const char* resID, const char* type, int& siz
 #ifdef OS_IOS
 extern bool IsAuv3AppExtension();
 #endif
+  
+END_IPLUG_NAMESPACE
+

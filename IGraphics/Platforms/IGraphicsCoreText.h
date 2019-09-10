@@ -13,6 +13,9 @@
 #include <CoreText/CoreText.h>
 #include "IGraphicsStructs.h"
 
+BEGIN_IPLUG_NAMESPACE
+BEGIN_IGRAPHICS_NAMESPACE
+
 class CoreTextFont : public PlatformFont
 {
 public:
@@ -90,7 +93,7 @@ private:
 
 namespace CoreTextHelpers
 {
-  extern PlatformFontPtr LoadPlatformFont(const char* fontID, const char* fileNameOrResID, const char* bundleID);
+  extern PlatformFontPtr LoadPlatformFont(const char* fontID, const char* fileNameOrResID, const char* bundleID, const char* sharedResourceSubPath = nullptr);
 
   extern PlatformFontPtr LoadPlatformFont(const char* fontID, const char* fontName, ETextStyle style);
 
@@ -98,3 +101,6 @@ namespace CoreTextHelpers
   
   CoreTextFontDescriptor* GetCTFontDescriptor(const IText& text, StaticStorage<CoreTextFontDescriptor>& cache);
 }
+
+END_IGRAPHICS_NAMESPACE
+END_IPLUG_NAMESPACE

@@ -23,6 +23,8 @@
 
 #include "config.h"
 
+BEGIN_IPLUG_NAMESPACE
+
 struct IPlugInstanceInfo
 {
   void* pAppHost;
@@ -33,11 +35,10 @@ class IPlugAPPHost;
 /**  Standalone application base class for an IPlug plug-in
 *   @ingroup APIClasses */
 class IPlugAPP : public IPlugAPIBase
-               , public IPlugProcessor<PLUG_SAMPLE_DST>
+               , public IPlugProcessor
 {
 public:
   IPlugAPP(IPlugInstanceInfo instanceInfo, IPlugConfig config);
-  ~IPlugAPP();
   
   //IPlugAPIBase
   void BeginInformHostOfParamChange(int idx) override {};
@@ -108,6 +109,8 @@ private:
   friend class IPlugAPPHost;
 };
 
-IPlugAPP* MakePlug(void* pAPPHost);
+IPlugAPP* MakePlug(const InstanceInfo& info);
+
+END_IPLUG_NAMESPACE
 
 #endif

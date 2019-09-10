@@ -18,6 +18,9 @@
 #include "IPlugPlatform.h"
 #include "wdlutf8.h"
 
+using namespace iplug;
+using namespace igraphics;
+
 #define VIRTUAL_KEY_BIT 0x80000000
 #define STB_TEXTEDIT_K_SHIFT 0x40000000
 #define STB_TEXTEDIT_K_CONTROL 0x20000000
@@ -54,6 +57,7 @@
 
 #define STB_TEXTEDIT_IMPLEMENTATION
 #include "stb_textedit.h"
+
 
 ITextEntryControl::ITextEntryControl()
 : IControl(IRECT())
@@ -157,7 +161,7 @@ void ITextEntryControl::OnMouseDown(float x, float y, const IMouseMod& mod)
   
   if(mod.R)
   {
-    static IPopupMenu menu {{"Cut", "Copy", "Paste"}, [&](int indexInMenu, IPopupMenu::Item* itemChosen) {
+    static IPopupMenu menu {"", {"Cut", "Copy", "Paste"}, [&](int indexInMenu, IPopupMenu::Item* itemChosen) {
       switch (indexInMenu) {
         case 0: Cut(); break;
         case 1: CopySelection(); break;

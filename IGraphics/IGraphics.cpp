@@ -16,12 +16,12 @@
 #if defined VST3_API
 #include "pluginterfaces/base/ustring.h"
 #include "IPlugVST3.h"
-using VST3_API_BASE = IPlugVST3;
+using VST3_API_BASE = iplug::IPlugVST3;
 #elif defined VST3C_API
 #include "pluginterfaces/base/ustring.h"
 #include "IPlugVST3_Controller.h"
 #include "IPlugVST3_View.h"
-using VST3_API_BASE = IPlugVST3Controller;
+using VST3_API_BASE = iplug::IPlugVST3Controller;
 #endif
 
 #include "IPlugParameter.h"
@@ -35,23 +35,8 @@ using VST3_API_BASE = IPlugVST3Controller;
 #include "IPopupMenuControl.h"
 #include "ITextEntryControl.h"
 
-struct SVGHolder
-{
-  NSVGimage* mImage = nullptr;
-
-  SVGHolder(NSVGimage* pImage)
-  : mImage(pImage)
-  {
-  }
-
-  ~SVGHolder()
-  {
-    if(mImage)
-      nsvgDelete(mImage);
-
-    mImage = nullptr;
-  }
-};
+using namespace iplug;
+using namespace igraphics;
 
 static StaticStorage<APIBitmap> sBitmapCache;
 static StaticStorage<SVGHolder> sSVGCache;
@@ -197,7 +182,7 @@ void IGraphics::SetControlValueAfterPopupMenu(IPopupMenu* pMenu)
 {
   if (!mInPopupMenu)
     return;
-    
+  
   if (mIsContextMenu)
     mInPopupMenu->OnContextSelection(pMenu ? pMenu->GetChosenItemIdx() : -1);
   else
@@ -446,6 +431,8 @@ void IGraphics::PromptUserInput(IControl& control, const IRECT& bounds, int valI
           mPromptPopupMenu.AddItem( new IPopupMenu::Item(str, IPopupMenu::Item::kChecked), -1 );
         else // not equal
           mPromptPopupMenu.AddItem( new IPopupMenu::Item(str), -1 );
+        
+        mPromptPopupMenu.SetRootTitle(pParam->GetNameForHost());
       }
 
       CreatePopupMenu(control, mPromptPopupMenu, bounds, valIdx);
@@ -794,17 +781,34 @@ void IGraphics::OnMouseDown(float x, float y, const IMouseMod& mod)
     #ifdef AAX_API
     if (mAAXViewContainer && paramIdx > kNoParameter)
     {
-      uint32_t mods = GetAAXModifiersFromIMouseMod(mod);
+      auto GetAAXModifiersFromIMouseMod = [](const IMouseMod& mod) {
+        uint32_t modifiers = 0;
+      
+        if (mod.A) modifiers |= AAX_eModifiers_Option; // ALT Key on Windows, ALT/Option key on mac
+      
+      #ifdef OS_WIN
+        if (mod.C) modifiers |= AAX_eModifiers_Command;
+      #else
+        if (mod.C) modifiers |= AAX_eModifiers_Control;
+        if (mod.R) modifiers |= AAX_eModifiers_Command;
+      #endif
+        if (mod.S) modifiers |= AAX_eModifiers_Shift;
+        if (mod.R) modifiers |= AAX_eModifiers_SecondaryButton;
+      
+        return modifiers;
+      };
+      
+      uint32_t aaxModifiersForPT = GetAAXModifiersFromIMouseMod(mod);
       #ifdef OS_WIN
       // required to get start/windows and alt keys
-      uint32_t aaxViewMods = 0;
-      mAAXViewContainer->GetModifiers(&aaxViewMods);
-      mods |= aaxViewMods;
+      uint32_t aaxModifiersFromPT = 0;
+      mAAXViewContainer->GetModifiers(&aaxModifiersFromPT);
+      aaxModifiersForPT |= aaxModifiersFromPT;
       #endif
       WDL_String paramID;
       paramID.SetFormatted(32, "%i", paramIdx+1);
 
-      if (mAAXViewContainer->HandleParameterMouseDown(paramID.Get(), mods) == AAX_SUCCESS)
+      if (mAAXViewContainer->HandleParameterMouseDown(paramID.Get(), aaxModifiersForPT) == AAX_SUCCESS)
       {
         return; // event handled by PT
       }
@@ -1267,7 +1271,7 @@ ISVG IGraphics::LoadSVG(const char* fileName, const char* units, float dpi)
   if(!pHolder)
   {
     WDL_String path;
-    EResourceLocation resourceFound = LocateResource(fileName, "svg", path, GetBundleID(), GetWinModuleHandle());
+    EResourceLocation resourceFound = LocateResource(fileName, "svg", path, GetBundleID(), GetWinModuleHandle(), GetSharedResourcesSubPath());
 
     if (resourceFound == EResourceLocation::kNotFound)
       return ISVG(nullptr); // return invalid SVG
@@ -1390,7 +1394,7 @@ IBitmap IGraphics::ScaleBitmap(const IBitmap& inBitmap, const char* name, int sc
   mDrawScale = inBitmap.GetDrawScale();
 
   IRECT bounds = IRECT(0, 0, inBitmap.W() / inBitmap.GetDrawScale(), inBitmap.H() / inBitmap.GetDrawScale());
-  StartLayer(bounds);
+  StartLayer(nullptr, bounds);
   DrawBitmap(inBitmap, bounds, 0, 0, nullptr);
   ILayerPtr layer = EndLayer();
   IBitmap bitmap = IBitmap(layer->mBitmap.release(), inBitmap.N(), inBitmap.GetFramesAreHorizontal(), name);
@@ -1427,7 +1431,7 @@ EResourceLocation IGraphics::SearchImageResource(const char* name, const char* t
       fullName.SetFormatted((int) (strlen(name) + strlen("@2x")), "%s@%dx%s", baseName.Get(), sourceScale, ext.Get());
     }
 
-    EResourceLocation found = LocateResource(fullName.Get(), type, result, GetBundleID(), GetWinModuleHandle());
+    EResourceLocation found = LocateResource(fullName.Get(), type, result, GetBundleID(), GetWinModuleHandle(), GetSharedResourcesSubPath());
 
     if (found > EResourceLocation::kNotFound)
       return found;
@@ -1497,13 +1501,13 @@ void IGraphics::CreatePopupMenu(IControl& control, IPopupMenu& menu, const IRECT
   DoCreatePopupMenu(control, menu, bounds, valIdx, false);
 }
 
-void IGraphics::StartLayer(const IRECT& r)
+void IGraphics::StartLayer(IControl* pControl, const IRECT& r)
 {
   IRECT alignedBounds = r.GetPixelAligned(GetBackingPixelScale());
   const int w = static_cast<int>(std::ceil(GetBackingPixelScale() * std::ceil(alignedBounds.W())));
   const int h = static_cast<int>(std::ceil(GetBackingPixelScale() * std::ceil(alignedBounds.H())));
 
-  PushLayer(new ILayer(CreateAPIBitmap(w, h, GetScreenScale(), GetDrawScale()), alignedBounds));
+  PushLayer(new ILayer(CreateAPIBitmap(w, h, GetScreenScale(), GetDrawScale()), alignedBounds, pControl, pControl->GetRECT()));
 }
 
 void IGraphics::ResumeLayer(ILayerPtr& layer)
@@ -1554,6 +1558,13 @@ ILayer* IGraphics::PopLayer()
 bool IGraphics::CheckLayer(const ILayerPtr& layer)
 {
   const APIBitmap* pBitmap = layer ? layer->GetAPIBitmap() : nullptr;
+    
+  if (pBitmap && layer->mControl && layer->mControlRECT != layer->mControl->GetRECT())
+  {
+    layer->mControlRECT = layer->mControl->GetRECT();
+    layer->Invalidate();
+  }
+
   return pBitmap && !layer->mInvalid && pBitmap->GetDrawScale() == GetDrawScale() && pBitmap->GetScale() == GetScreenScale();
 }
 

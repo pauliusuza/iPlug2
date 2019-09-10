@@ -21,6 +21,9 @@
 
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
+using namespace iplug;
+using namespace igraphics;
+
 StaticStorage<CoreTextFontDescriptor> sFontDescriptorCache;
 
 #pragma mark -
@@ -28,7 +31,7 @@ StaticStorage<CoreTextFontDescriptor> sFontDescriptorCache;
 std::map<std::string, void*> gTextureMap;
 
 IGraphicsIOS::IGraphicsIOS(IGEditorDelegate& dlg, int w, int h, int fps, float scale)
-: IGraphicsNanoVG(dlg, w, h, fps, scale)
+: IGRAPHICS_DRAW_CLASS(dlg, w, h, fps, scale)
 {
  
   if(!gTextureMap.size())

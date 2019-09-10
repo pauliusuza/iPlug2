@@ -3,8 +3,8 @@
 #include "IPlugPaths.h"
 #include "IconsForkAwesome.h"
 
-IPlugControls::IPlugControls(IPlugInstanceInfo instanceInfo)
-: IPLUG_CTOR(kNumParams, kNumPrograms, instanceInfo)
+IPlugControls::IPlugControls(const InstanceInfo& info)
+: Plugin(info, MakeConfig(kNumParams, kNumPrograms))
 {
   GetParam(kParamGain)->InitDouble("Gain", 100., 0., 100.0, 0.01, "%");
   GetParam(kParamMode)->InitEnum("Mode", 0, 4, "", IParam::kFlagsNone, "", "one", "two", "three", "four");
@@ -135,7 +135,7 @@ IPlugControls::IPlugControls(IPlugInstanceInfo instanceInfo)
 
     pGraphics->AttachControl(new IVButtonControl(nextCell().GetCentredInside(110.), [pGraphics](IControl* pCaller){
       SplashClickActionFunc(pCaller);
-      static IPopupMenu menu {{"one", "two", "three"}, [pCaller](int indexInMenu, IPopupMenu::Item* itemChosen) {
+      static IPopupMenu menu {"Menu", {"one", "two", "three"}, [pCaller](int indexInMenu, IPopupMenu::Item* itemChosen) {
           if(itemChosen)
             dynamic_cast<IVButtonControl*>(pCaller)->SetValueStr(itemChosen->GetText());
         }
