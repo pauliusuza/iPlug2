@@ -1006,7 +1006,10 @@ static void MakeCursorFromName(NSCursor*& cursor, const char *name)
 {
   if (mTextFieldView)
     return;
-
+  
+  if (areaRect.size.height <= text.mSize) {
+    areaRect.size.height = text.mSize+10;
+  }
   mTextFieldView = [[IGRAPHICS_TEXTFIELD alloc] initWithFrame: areaRect];
   
   if (text.mVAlign == EVAlign::Middle)
