@@ -25,7 +25,7 @@
 
 BEGIN_IPLUG_NAMESPACE
 
-struct IPlugInstanceInfo
+struct InstanceInfo
 {
   void* pAppHost;
 };
@@ -38,7 +38,8 @@ class IPlugAPP : public IPlugAPIBase
                , public IPlugProcessor
 {
 public:
-  IPlugAPP(IPlugInstanceInfo instanceInfo, IPlugConfig config);
+  IPlugAPP(const InstanceInfo& info, const Config& config);
+  ~IPlugAPP();
   
   //IPlugAPIBase
   void BeginInformHostOfParamChange(int idx) override {};
@@ -63,7 +64,7 @@ public:
    * GUI and add the transport bar on tob of it
    * @param pGraphics a pointer to the graphics context to which the UI belongs
    */
-  void LayoutUI(IGraphics* pGraphics) override;
+  void LayoutUI(igraphics::IGraphics* pGraphics) override;
   
   /**
    * Handles the messages received from the transport bar (such as tempo change or play/stop buttons)

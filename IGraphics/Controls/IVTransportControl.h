@@ -60,6 +60,9 @@
  * kX2: BPM box background color
  * kFR: buttons and bpm box frame color
  */
+
+using namespace iplug::igraphics;
+
 class IVTransportControl : public IControl
                          , public IVectorBase
 {
@@ -250,7 +253,7 @@ public:
     
     DrawBackGround(g, mRECT);
     
-    g.StartLayer(mRECT);
+    g.StartLayer(this,mRECT);
     
     // draw BPM box
     float cR = GetRoundedCornerRadius(mBpmRect);
