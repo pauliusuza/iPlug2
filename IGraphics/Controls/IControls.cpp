@@ -582,7 +582,7 @@ void IVKnobControl::DrawWidget(IGraphics& g)
   
   const float cx = mWidgetBounds.MW(), cy = mWidgetBounds.MH();
   
-  if(!IsGrayed())
+  if(!IsDisabled())
   {
     /*TODO: constants! */
     const float v = mAngle1 + ((float) GetValue() * (mAngle2 - mAngle1));
@@ -1113,7 +1113,7 @@ void IVGroupControl::Draw(IGraphics& g)
 
 void IVGroupControl::DrawWidget(IGraphics& g)
 {
-  const float cr = mStyle.roundness;
+  const float cr = GetRoundedCornerRadius(mWidgetBounds);
   const float ft = mStyle.frameThickness;
   const float hft = ft/2.f;
   

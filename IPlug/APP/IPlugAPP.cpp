@@ -163,9 +163,9 @@ void IPlugAPP::AppProcess(double** inputs, double** outputs, int nFrames)
 
   //Do not handle Sysex messages here - SendSysexMsgFromUI overridden
 
-  ENTER_PARAMS_MUTEX;
+  ENTER_PARAMS_MUTEX
   ProcessBuffers(0.0, GetBlockSize());
-  LEAVE_PARAMS_MUTEX;
+  LEAVE_PARAMS_MUTEX
 }
 
 #if APP_HAS_TRANSPORT_BAR
