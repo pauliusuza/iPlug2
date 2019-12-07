@@ -1,6 +1,6 @@
 // this is used for macOS Developer ID / Appstore code-signing
-CERTIFICATE_ID = Oliver Larkin
-DEVELOPMENT_TEAM = 686EDA2T8T // log in to developer.apple.com and see the end of the URL e.g. https://developer.apple.com/account/#/overview/686EDA2T8T
+CERTIFICATE_ID = Saverio Vigni
+DEVELOPMENT_TEAM = C2BJGWH5T3 // log in to developer.apple.com and see the end of the URL e.g. https://developer.apple.com/account/#/overview/686EDA2T8T
 
 // Which compiler to use
 //COMPILER = com.intel.compilers.icc.12_1_0
@@ -15,7 +15,7 @@ CLANG_CXX_LIBRARY = libc++
 CLANG_WARN_DOCUMENTATION_COMMENTS = NO
 
 // the minimum OS to support
-MACOSX_DEPLOYMENT_TARGET = 10.11
+MACOSX_DEPLOYMENT_TARGET = 10.7
 
 SHARED_PRECOMPS_DIR = $(TARGET_BUILD_DIR)/PCH
 
@@ -69,7 +69,6 @@ RTMIDI_PATH = $(DEPS_PATH)/IPlug/RTMidi
 
 EXTRAS_PATH = $(IPLUG_PATH)/Extras
 YOGA_PATH = $(DEPS_PATH)/IGraphics/yoga/yoga
-PUGL_PATH = $(DEPS_PATH)/Extras/pugl
 IMGUI_PATH = $(DEPS_PATH)/IGraphics/imgui
 
 //faust is linked as a dynamic library

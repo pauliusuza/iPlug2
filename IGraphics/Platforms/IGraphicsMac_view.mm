@@ -447,7 +447,7 @@ extern StaticStorage<CoreTextFontDescriptor> sFontDescriptorCache;
 
 - (id) initWithIGraphics: (IGraphicsMac*) pGraphics
 {
-  TRACE;
+  TRACE
 
   mGraphics = pGraphics;
   NSRect r = NSMakeRect(0.f, 0.f, (float) pGraphics->WindowWidth(), (float) pGraphics->WindowHeight());
@@ -477,7 +477,11 @@ extern StaticStorage<CoreTextFontDescriptor> sFontDescriptorCache;
 }
 
 - (void)dealloc
-{  
+{
+  if([NSColorPanel sharedColorPanelExists])
+    [[NSColorPanel sharedColorPanel] close];
+  
+  mColorPickerFunc = nullptr;
   [mMoveCursor release];
   [mTrackingArea release];
   [[NSNotificationCenter defaultCenter] removeObserver:self];
@@ -825,8 +829,8 @@ static void MakeCursorFromName(NSCursor*& cursor, const char *name)
   double hotX = [info[@"hotx-scaled"] doubleValue];
   double hotY = [info[@"hoty-scaled"] doubleValue];
   double blur = [info[@"blur"] doubleValue];
-  double offsetX = [info[@"shadowoffsetx"] doubleValue];
-  double offsetY = [info[@"shadowoffsety"] doubleValue];
+  CGFloat offsetX = [info[@"shadowoffsetx"] doubleValue];
+  CGFloat offsetY = [info[@"shadowoffsety"] doubleValue];
   double red = [info[@"shadowcolor"][0] doubleValue];
   double green = [info[@"shadowcolor"][1] doubleValue];
   double blue = [info[@"shadowcolor"][2] doubleValue];
@@ -1006,7 +1010,10 @@ static void MakeCursorFromName(NSCursor*& cursor, const char *name)
 {
   if (mTextFieldView)
     return;
-
+  
+  if (areaRect.size.height <= text.mSize) {
+    areaRect.size.height = text.mSize+10;
+  }
   mTextFieldView = [[IGRAPHICS_TEXTFIELD alloc] initWithFrame: areaRect];
   
   if (text.mVAlign == EVAlign::Middle)
@@ -1097,16 +1104,16 @@ static void MakeCursorFromName(NSCursor*& cursor, const char *name)
 
 - (BOOL) promptForColor: (IColor&) color : (IColorPickerHandlerFunc) func;
 {
-  NSColorPanel* colorPicker = [NSColorPanel sharedColorPanel];
+  NSColorPanel* colorPanel = [NSColorPanel sharedColorPanel];
   mColorPickerFunc = func;
 
-  [colorPicker setShowsAlpha:TRUE];
-  [colorPicker setColor:ToNSColor(color)];
-  [colorPicker setTarget:self];
-  [colorPicker setAction:@selector(onColorPicked:)];
-  [colorPicker orderFront:nil];
-  
-  return colorPicker != nil;
+  [colorPanel setTarget:self];
+  [colorPanel setShowsAlpha: TRUE];
+  [colorPanel setAction:@selector(onColorPicked:)];
+  [colorPanel setColor:ToNSColor(color)];
+  [colorPanel orderFront:nil];
+
+  return colorPanel != nil;
 }
 
 - (void) onColorPicked: (NSColorPanel*) colorPanel
