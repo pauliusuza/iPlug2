@@ -574,16 +574,17 @@ bool IPlugAPPHost::InitAudio(uint32_t inId, uint32_t outId, uint32_t sr, uint32_
 
   RtAudio::StreamParameters iParams, oParams;
   iParams.deviceId = inId;
-  iParams.nChannels = 2; // TODO: flexible channel count
+  iParams.nChannels = GetPlug()->MaxNChannels(ERoute::kInput); // TODO: flexible channel count
   iParams.firstChannel = 0; // TODO: flexible channel count
 
   oParams.deviceId = outId;
-  oParams.nChannels = 2; // TODO: flexible channel count
+  oParams.nChannels = GetPlug()->MaxNChannels(ERoute::kOutput); // TODO: flexible channel count
   oParams.firstChannel = 0; // TODO: flexible channel count
 
   mBufferSize = iovs; // mBufferSize may get changed by stream
 
-  DBGMSG("\ntrying to start audio stream @ %i sr, %i buffersize\nindev = %i:%s\noutdev = %i:%s\n", sr, mBufferSize, inId, GetAudioDeviceName(inId).c_str(), outId, GetAudioDeviceName(outId).c_str());
+  DBGMSG("\ntrying to start audio stream @ %i sr, %i buffer size\nindev = %i:%s\noutdev = %i:%s\ninputs = %i\noutputs = %i\n",
+         sr, mBufferSize, inId, GetAudioDeviceName(inId).c_str(), outId, GetAudioDeviceName(outId).c_str(), iParams.nChannels, oParams.nChannels);
 
   RtAudio::StreamOptions options;
   options.flags = RTAUDIO_NONINTERLEAVED;
@@ -612,7 +613,18 @@ bool IPlugAPPHost::InitAudio(uint32_t inId, uint32_t outId, uint32_t sr, uint32_
   
   try
   {
-    mDAC->openStream(&oParams, &iParams, RTAUDIO_FLOAT64, sr, &mBufferSize, &AudioCallback, NULL, &options /*, &ErrorCallback */);
+    mDAC->openStream(&oParams, iParams.nChannels > 0 ? &iParams : nullptr, RTAUDIO_FLOAT64, sr, &mBufferSize, &AudioCallback, NULL, &options /*, &ErrorCallback */);
+    
+    for (int i = 0; i < iParams.nChannels; i++)
+    {
+      mInputBufPtrs.Add(nullptr); //will be set in callback
+    }
+    
+    for (int i = 0; i < oParams.nChannels; i++)
+    {
+      mOutputBufPtrs.Add(nullptr); //will be set in callback
+    }
+    
     mDAC->startStream();
     mActiveState = mState;
   }
@@ -696,22 +708,16 @@ void IPlugAPPHost::CountClock(double deltatime)
 // static
 int IPlugAPPHost::AudioCallback(void* pOutputBuffer, void* pInputBuffer, uint32_t nFrames, double streamTime, RtAudioStreamStatus status, void* pUserData)
 {
-  if (status)
-    std::cout << "Stream underflow detected!" << std::endl;
-
   IPlugAPPHost* _this = sInstance.get();
   // safety...
   if(_this == nullptr) {
     return 0;
   }
-
+  
+  int nins = _this->GetPlug()->MaxNChannels(ERoute::kInput);
+  int nouts = _this->GetPlug()->MaxNChannels(ERoute::kOutput);
   double* pInputBufferD = static_cast<double*>(pInputBuffer);
   double* pOutputBufferD = static_cast<double*>(pOutputBuffer);
-
-  int inRightOffset = 0;
-
-//  if(!mState.mAudioInIsMono)
-    inRightOffset = nFrames;
 
   if (_this->mVecElapsed > APP_N_VECTOR_WAIT ) // wait APP_N_VECTOR_WAIT * iovs before processing audio, to avoid clicks
   {
@@ -721,9 +727,16 @@ int IPlugAPPHost::AudioCallback(void* pOutputBuffer, void* pInputBuffer, uint32_
 
       if (_this->mBufIndex == 0)
       {
-        double* inputs[2] = {pInputBufferD + i, pInputBufferD + inRightOffset + i};
-        double* outputs[2] = {pOutputBufferD + i, pOutputBufferD + nFrames + i};
-
+  for (int c = 0; c < nins; c++)
+        {
+          _this->mInputBufPtrs.Set(c, (pInputBufferD + (c * nFrames)) + i);
+        }
+        
+        for (int c = 0; c < nouts; c++)
+        {
+          _this->mOutputBufPtrs.Set(c, (pOutputBufferD + (c * nFrames)) + i);
+        } 
+       
 #if APP_HAS_TRANSPORT_BAR
         // set the timeinfo stuff for the plugin code
         double samplesPerBeat = (double)(_this->mSampleRate * 60) / (double)_this->mTimeInfo.mTempo;
@@ -753,8 +766,8 @@ int IPlugAPPHost::AudioCallback(void* pOutputBuffer, void* pInputBuffer, uint32_
           _this->mTimeInfo.mSamplePos += APP_SIGNAL_VECTOR_SIZE;
           _this->mTimeInfo.mPPQPos += (double)APP_SIGNAL_VECTOR_SIZE / samplesPerBeat;
         }
-#endif
-      }
+#endif     
+ }
 
 
       // fade in
@@ -774,7 +787,8 @@ int IPlugAPPHost::AudioCallback(void* pOutputBuffer, void* pInputBuffer, uint32_
   }
   else
   {
-    memset(pOutputBufferD, 0, nFrames * APP_NUM_CHANNELS * sizeof(double));
+    int maxNouts = _this->GetPlug()->MaxNChannels(ERoute::kOutput);
+    memset(pOutputBufferD, 0, nFrames * maxNouts * sizeof(double));
   }
   
   _this->mVecElapsed++;

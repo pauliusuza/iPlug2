@@ -6,9 +6,9 @@ IPlugSwift::IPlugSwift(const InstanceInfo& info)
 {
   GetParam(kParamGain)->InitGain("Volume");
   
-  MakePreset("One", 0.);
-  MakePreset("Two", -10.);
-  MakePreset("Three", -20.);
+  MakePreset("Gain = 0dB", 0.);
+  MakePreset("Gain = -10dB", -10.);
+  MakePreset("Gain = -20dB", -20.);
 }
 
 void IPlugSwift::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
@@ -26,9 +26,13 @@ void IPlugSwift::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
     {
       mCount = 0;
       mBufferFull = true;
+      if(mActiveBuffer == mVizBuffer1)
+        mActiveBuffer = mVizBuffer2;
+      else
+        mActiveBuffer = mVizBuffer1;
     }
 
-    mVizBuffer[mCount++] = outputs[0][s];
+    mActiveBuffer[mCount++] = outputs[0][s];
   }
 }
 
@@ -36,7 +40,13 @@ void IPlugSwift::OnIdle()
 {
   if(mBufferFull)
   {
-    SendArbitraryMsgFromDelegate(kMsgTagData, kDataPacketSize * sizeof(float), mVizBuffer);
+    float* pData = nullptr;
+    if(mActiveBuffer == mVizBuffer1)
+      pData = mVizBuffer2;
+    else
+      pData = mVizBuffer1;
+    
+    SendArbitraryMsgFromDelegate(kMsgTagData, kDataPacketSize * sizeof(float), pData);
     mBufferFull = false;
   }
 }
@@ -64,6 +74,10 @@ bool IPlugSwift::OnMessage(int messageTag, int controlTag, int dataSize, const v
   {
     DBGMSG("MsgTagHello received\n");
     return true;
+  }
+  else if(messageTag == kMsgTagRestorePreset)
+  {
+    RestorePreset(controlTag);
   }
   
   return CocoaEditorDelegate::OnMessage(messageTag, controlTag, dataSize, pData);

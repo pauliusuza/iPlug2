@@ -272,14 +272,16 @@ private:
   std::vector<std::string> mMidiInputDevNames;
   std::vector<std::string> mMidiOutputDevNames;
   
+  WDL_PtrList<double> mInputBufPtrs;
+  WDL_PtrList<double> mOutputBufPtrs;
+
 #if APP_HAS_TRANSPORT_BAR
   uint32_t mLastClockCount = 0; // store number of midi clock in count
   uint32_t mMidiSPP = 0;
   ITimeInfo mTimeInfo;
   bool mMidiMaster = true;
-#endif
-  
-  friend class IPlugAPP;
+#endif  
+friend class IPlugAPP;
 };
 
 END_IPLUG_NAMESPACE
