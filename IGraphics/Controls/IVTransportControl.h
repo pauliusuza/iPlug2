@@ -317,9 +317,9 @@ public:
     
     ILayerPtr buttons = g.EndLayer();
     IBlend blend = IBlend(EBlend::Default);
-    if(mGrayed) {
-      blend = IBlend(EBlend::Default, GRAYED_ALPHA);
-    }
+//    if(mGrayed) {
+//      blend = IBlend(EBlend::Default, GRAYED_ALPHA);
+//    }
     g.DrawLayer(buttons, &blend);
   }
 
