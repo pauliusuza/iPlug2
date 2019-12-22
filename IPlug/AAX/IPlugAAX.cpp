@@ -316,6 +316,9 @@ void IPlugAAX::RenderAudio(AAX_SIPlugRenderInfo* pRenderInfo)
     
     mTransport->GetCurrentTickPosition(&ppqPos);
     timeInfo.mPPQPos = (double) ppqPos / 960000.0;
+    if(timeInfo.mPPQPos < 0) {
+      timeInfo.mPPQPos = 0;
+    }
     
     if(timeInfo.mPPQPos < 0)
       timeInfo.mPPQPos = 0;

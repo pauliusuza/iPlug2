@@ -39,6 +39,7 @@
 
 #include "IPlugPlatform.h"
 #include "IPlugConstants.h"
+#include "IPlugTimer.h"
 
 #include "IPlugAPP.h"
 
@@ -106,7 +107,7 @@ public:
     , mMidiInDev(OFF_TEXT)
     , mMidiOutDev(OFF_TEXT)
     , mAudioDriverType(0) // DirectSound / CoreAudio by default
-    , mBufferSize(512)
+    , mBufferSize(APP_DEFAULT_BUFFER_SIZE)
     , mAudioSR(44100)
     , mMidiInChan(0)
     , mMidiOutChan(0)
@@ -205,6 +206,28 @@ public:
   bool TryToChangeAudio();
   bool SelectMIDIDevice(ERoute direction, const char* portName);
   
+#if APP_HAS_TRANSPORT_BAR
+  /**
+   * Changes the playback status updating the values in the internal transport info structure
+   * @param toggle true starts the playback, false stops it
+   */
+  void TogglePlay(bool toggle);
+  
+  /**
+   * Sets the ITimeinfo "tempo" value of the internal timeinfo structure and changes
+   * the internal tempo to the set BPM value
+   * @param BPM the new tempo
+   */
+  void SetBPM(double BPM);
+  
+  /**
+   * Counts MIDI clock messages and every 24 counts a beat. used to set internal tempo
+   * and stay synced to an external device
+   * @param deltatime the time delta provided by RtMidi
+   */
+  void CountClock(double deltatime);
+#endif
+  
   static int AudioCallback(void* pOutputBuffer, void* pInputBuffer, uint32_t nFrames, double streamTime, RtAudioStreamStatus status, void* pUserData);
   static void MIDICallback(double deltatime, std::vector<uint8_t>* pMsg, void* pUserData);
   static void ErrorCallback(RtAudioError::Type type, const std::string& errorText);
@@ -213,6 +236,7 @@ public:
   static WDL_DLGRET MainDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
   IPlugAPP* GetPlug() { return mIPlug.get(); }
+  
 private:
   std::unique_ptr<IPlugAPP> mIPlug = nullptr;
   std::unique_ptr<RtAudio> mDAC = nullptr;
@@ -232,7 +256,7 @@ private:
   double mSampleRate = 44100.;
   uint32_t mSamplesElapsed = 0;
   uint32_t mVecElapsed = 0;
-  uint32_t mBufferSize = 512;
+  uint32_t mBufferSize = APP_DEFAULT_BUFFER_SIZE;
   uint32_t mBufIndex; // index for signal vector, loops from 0 to mSigVS
   
   /** The index of the operating systems default input device, -1 if not detected */
@@ -251,7 +275,13 @@ private:
   WDL_PtrList<double> mInputBufPtrs;
   WDL_PtrList<double> mOutputBufPtrs;
 
-  friend class IPlugAPP;
+#if APP_HAS_TRANSPORT_BAR
+  uint32_t mLastClockCount = 0; // store number of midi clock in count
+  uint32_t mMidiSPP = 0;
+  ITimeInfo mTimeInfo;
+  bool mMidiMaster = true;
+#endif  
+friend class IPlugAPP;
 };
 
 END_IPLUG_NAMESPACE

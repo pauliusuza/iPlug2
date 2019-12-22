@@ -574,9 +574,12 @@ WDL_DLGRET IPlugAPPHost::MainDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
           
           if (pluginOpensAboutBox == false)
           {
+            WDL_String plugName;
+            plugName.Set(PLUG_NAME);
+            plugName.Append(" " PLUG_VERSION_STR);
             WDL_String info;
             info.Append(PLUG_COPYRIGHT_STR"\nBuilt on " __DATE__);
-            MessageBox(hwndDlg, info.Get(), PLUG_NAME, MB_OK);
+            MessageBox(hwndDlg, info.Get(), plugName.Get(), MB_OK);
           }
 
           return 0;
