@@ -610,7 +610,9 @@ void IGraphicsCairo::SetPlatformContext(void* pContext)
 {
   if (!pContext)
   {
+#ifdef OS_MAC
     CGContextSaveGState((CGContextRef) GetPlatformContext());
+#endif
     UpdateCairoMainSurface(nullptr);
   }
   else if(!mSurface)
