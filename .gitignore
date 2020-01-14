@@ -42,4 +42,5 @@ Documentation/html
 Documentation/doxygen_warnings.txt
 Examples/build_errors.log
 *Projects/*
-contents.xcworkspacedata
+Examples/IPlugSwift/Pods
+PodFile.lock

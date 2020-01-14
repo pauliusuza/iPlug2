@@ -212,12 +212,16 @@ void IControl::SetDirty(bool triggerAction, int valIdx)
   }
 }
 
+void IControl::Animate()
+{
+  if (GetAnimationFunction())
+    mAnimationFunc(this);
+}
+
 bool IControl::IsDirty()
 {
-  if(GetAnimationFunction()) {
-    mAnimationFunc(this);
+  if (GetAnimationFunction())
     return true;
-  }
   
   return mDirty;
 }
@@ -294,6 +298,29 @@ void IControl::SetSize(float w, float h)
   if (h < 0.f) h = 0.f;
 
   SetTargetAndDrawRECTs({mRECT.L, mRECT.T, mRECT.L + w, mRECT.T + h});
+}
+
+IControl* IControl::AttachGestureRecognizer(EGestureType type, IGestureFunc func)
+{
+  mGestureFuncs.insert(std::make_pair(type, func));
+  
+  GetUI()->AttachGestureRecognizer(type); // this will crash if called in constructor
+  
+  return this; //for chaining
+}
+
+bool IControl::OnGesture(const IGestureInfo& info)
+{
+  auto itr = mGestureFuncs.find(info.type);
+  
+  if(itr != mGestureFuncs.end())
+  {
+    mLastGesture = info.type;
+    itr->second(this, info);
+    return true;
+  }
+  
+  return false;
 }
 
 void IControl::PromptUserInput(int valIdx)
@@ -702,11 +729,13 @@ bool IKnobControlBase::IsFineControl(const IMouseMod& mod, bool wheel) const
 void IKnobControlBase::OnMouseDrag(float x, float y, float dX, float dY, const IMouseMod& mod)
 {
   double gearing = IsFineControl(mod, false) ? mGearing * 10.0 : mGearing;
+  
+  IRECT dragBounds = GetKnobDragBounds();
 
   if (mDirection == EDirection::Vertical)
-    SetValue(GetValue() + (double)dY / (double)(mRECT.T - mRECT.B) / gearing);
+    SetValue(GetValue() + (double)dY / (double)(dragBounds.T - dragBounds.B) / gearing);
   else
-    SetValue(GetValue() + (double)dX / (double)(mRECT.R - mRECT.L) / gearing);
+    SetValue(GetValue() + (double)dX / (double)(dragBounds.R - dragBounds.L) / gearing);
 
   SetDirty();
 }
