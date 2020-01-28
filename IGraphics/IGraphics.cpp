@@ -202,7 +202,7 @@ void IGraphics::SetControlValueAfterPopupMenu(IPopupMenu* pMenu)
 void IGraphics::AttachBackground(const char* name)
 {
   IBitmap bg = LoadBitmap(name, 1, false);
-  IControl* pBG = new IBitmapControl(0, 0, bg, kNoParameter, EBlend::Clobber);
+  IControl* pBG = new IBitmapControl(0, 0, bg, kNoParameter, EBlend::Default);
   pBG->SetDelegate(*GetDelegate());
   mControls.Insert(0, pBG);
 }
@@ -1362,7 +1362,7 @@ ISVG IGraphics::LoadSVG(const char* fileName, const char* units, float dpi)
     // So use NanoSVG to get the size.
     if (svgDOM->containerSize().width() == 0)
     {
-      NSVGimage* pImage;
+      NSVGimage* pImage = nullptr;
 
       if (resourceFound == EResourceLocation::kAbsolutePath)
       {
@@ -1628,8 +1628,11 @@ void IGraphics::DoCreatePopupMenu(IControl& control, IPopupMenu& menu, const IRE
   }
   else
   {
-    IPopupMenu* pReturnMenu = CreatePlatformPopupMenu(menu, bounds);
-    SetControlValueAfterPopupMenu(pReturnMenu);
+    bool isAsync = false;
+    IPopupMenu* pReturnMenu = CreatePlatformPopupMenu(menu, bounds, isAsync);
+    
+    if(!isAsync)
+      SetControlValueAfterPopupMenu(pReturnMenu);
   }
 }
 
