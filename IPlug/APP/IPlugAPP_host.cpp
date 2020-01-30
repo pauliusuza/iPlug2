@@ -732,7 +732,7 @@ void ApplyFades(double *pBuffer, int nChans, int nFrames, bool down)
 }// static
 int IPlugAPPHost::AudioCallback(void* pOutputBuffer, void* pInputBuffer, uint32_t nFrames, double streamTime, RtAudioStreamStatus status, void* pUserData)
 {
-  IPlugAPPHost* _this = sInstance.get();
+  IPlugAPPHost* _this = (IPlugAPPHost*) pUserData;
   
   int nins = _this->GetPlug()->MaxNChannels(ERoute::kInput);
   int nouts = _this->GetPlug()->MaxNChannels(ERoute::kOutput);
@@ -753,7 +753,7 @@ int IPlugAPPHost::AudioCallback(void* pOutputBuffer, void* pInputBuffer, uint32_
 
       if (_this->mBufIndex == 0)
       {
-  for (int c = 0; c < nins; c++)
+        for (int c = 0; c < nins; c++)
         {
           _this->mInputBufPtrs.Set(c, (pInputBufferD + (c * nFrames)) + i);
         }
@@ -785,17 +785,18 @@ int IPlugAPPHost::AudioCallback(void* pOutputBuffer, void* pInputBuffer, uint32_
           _this->mIPlug->SetTimeInfo(_this->mTimeInfo);
         }
         
-        _this->mIPlug->AppProcess(inputs, outputs, APP_SIGNAL_VECTOR_SIZE);
+        _this->mIPlug->AppProcess(_this->mInputBufPtrs.GetList(),  _this->mOutputBufPtrs.GetList(), APP_SIGNAL_VECTOR_SIZE);
         _this->mSamplesElapsed += APP_SIGNAL_VECTOR_SIZE;
         
         if(_this->mTimeInfo.mTransportIsRunning) {
           _this->mTimeInfo.mSamplePos += APP_SIGNAL_VECTOR_SIZE;
           _this->mTimeInfo.mPPQPos += (double)APP_SIGNAL_VECTOR_SIZE / samplesPerBeat;
         }
-#endif           }
-
-      // fade in
-      if (_this->mFadeMult < 1.)
+#endif
+        
+      }
+      
+      for (int c = 0; c < nouts; c++)
       {
         pOutputBufferD[c * nFrames + i] *= APP_MULT;
       }
