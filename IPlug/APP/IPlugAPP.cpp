@@ -274,7 +274,7 @@ void IPlugAPP::GrayOutTransport(bool toggle)
 {
   if(GetUI()) {
     IVTransportControl* transport = (IVTransportControl*)GetUI()->GetControlWithTag(999);
-    transport->GrayOut(toggle);
+    transport->SetDisabled(toggle);
   }
 }
 
