@@ -226,7 +226,7 @@ IGraphicsNanoVG::IGraphicsNanoVG(IGEditorDelegate& dlg, int w, int h, int fps, f
 {
   DBGMSG("IGraphics NanoVG @ %i FPS\n", fps);
   StaticStorage<IFontData>::Accessor storage(sFontCache);
-  storage.Release();
+  storage.Retain();
 }
 
 IGraphicsNanoVG::~IGraphicsNanoVG() 
@@ -284,7 +284,7 @@ IBitmap IGraphicsNanoVG::LoadBitmap(const char* name, int nStates, bool framesAr
     int sourceScale = 0;
     EResourceLocation resourceFound = SearchImageResource(name, ext, fullPathOrResourceID, targetScale, sourceScale);
 
-    bool bitmapTypeSupported = BitmapExtSupported(ext); // KTX textures pass this test (since ext is png)
+    bool bitmapTypeSupported = BitmapExtSupported(ext); // KTX textures pass this test (if ext is .ktx.png)
     
     if(resourceFound == EResourceLocation::kNotFound || !bitmapTypeSupported)
     {
@@ -456,10 +456,12 @@ void IGraphicsNanoVG::DrawResize()
     nvgDeleteFramebuffer(mMainFrameBuffer);
   
   if (mVG)
+  {
     mMainFrameBuffer = nvgCreateFramebuffer(mVG, WindowWidth() * GetScreenScale(), WindowHeight() * GetScreenScale(), 0);
   
-  if (mMainFrameBuffer == nullptr)
-    DBGMSG("Could not init FBO.\n");
+    if (mMainFrameBuffer == nullptr)
+      DBGMSG("Could not init FBO.\n");
+  }
 }
 
 void IGraphicsNanoVG::BeginFrame()
@@ -778,10 +780,7 @@ void IGraphicsNanoVG::PathTransformSetMatrix(const IMatrix& m)
 
 void IGraphicsNanoVG::SetClipRegion(const IRECT& r)
 {
-  if (!r.Empty())
-    nvgScissor(mVG, r.L, r.T, r.W(), r.H());
-  else
-    nvgResetScissor(mVG);
+  nvgScissor(mVG, r.L, r.T, r.W(), r.H());
 }
 
 void IGraphicsNanoVG::DrawDottedLine(const IColor& color, float x1, float y1, float x2, float y2, const IBlend* pBlend, float thickness, float dashLen)

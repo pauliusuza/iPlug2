@@ -285,8 +285,8 @@
     <ClInclude Include="..\..\..\IGraphics\Drawing\IGraphicsSkia.h">
       <Filter>IGraphics\Drawing</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\IGraphics\Controls\IVTransportControl.h">
-      <Filter>IGraphics\Controls</Filter>
+    <ClInclude Include="..\..\..\IPlug\IPlugPluginBase.h">
+      <Filter>IPlug</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
