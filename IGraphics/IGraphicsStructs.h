@@ -283,22 +283,6 @@ struct IColor
     return n;
   }
   
-  /** @param o /todo */
-  void SetOpacity(double o)
-  {
-    A *= o;
-    A = std::min(A, 255);
-    A = std::max(A, 0);
-  }
-  
-  /** @param + /todo */
-  IColor GetWithOpacity(double o) const
-  {
-    IColor n = *this;
-    n.SetOpacity(o);
-    return n;
-  }
-  
   /** Get the color as a 3 float array
    * @param rgbf ptr to array of 3 floats */
   void GetRGBf(float* rgbf) const
@@ -471,55 +455,6 @@ struct IColor
     col.A = static_cast<int>(a * 255.f);
     return col;
   }
-
-  void GetHSL(float* HSL) {
-    
-    float fR = R / 255.0;
-    float fG = G / 255.0;
-    float fB = B / 255.0;
-      
-    float fCMin = fmin(fR, fmin(fG, fB));
-    float fCMax = fmax(fR, fmax(fG, fB));
-    
-    // L
-    HSL[2] = 50 * (fCMin + fCMax);
-      
-    if (fCMin == fCMax) {
-      //S
-      HSL[1] = 0;
-      //H
-      HSL[0] = 0;
-      return;
-    } else if (HSL[2] < 50) {
-      HSL[1] = 100 * (fCMax - fCMin) / (fCMax + fCMin);
-    } else {
-      HSL[1] = 100 * (fCMax - fCMin) / (2.0 - fCMax - fCMin);
-    }
-      
-    if (fCMax == fR) {
-      HSL[0] = 60 * (fG - fB) / (fCMax - fCMin);
-    }
-    if (fCMax == fG) {
-      HSL[0] = 60 * (fB - fR) / (fCMax - fCMin) + 120;
-    }
-    if (fCMax == fB) {
-      HSL[0] = 60 * (fR - fG) / (fCMax - fCMin) + 240;
-    }
-    if (HSL[0] < 0) {
-      HSL[0] = HSL[0] + 360;
-    }
-    
-    HSL[0] /= 360.;
-    HSL[1] /= 100.;
-    HSL[2] /= 100.;
-  }  /** /todo 
-   * @return int /todo */
-  int GetLuminosity() const
-  {
-    int min = R < G ? (R < B ? R : B) : (G < B ? G : B);
-    int max = R > G ? (R > B ? R : B) : (G > B ? G : B);
-    return (min + max) / 2;
-  };
   
   /** /todo 
    * @param start /todo
