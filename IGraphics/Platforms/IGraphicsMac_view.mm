@@ -475,6 +475,10 @@ extern StaticStorage<CoreTextFontDescriptor> sFontDescriptorCache;
   }
 #endif
   
+#if defined IGRAPHICS_CAIRO
+  self.wantsLayer = YES;
+#endif
+  
   [self registerForDraggedTypes:[NSArray arrayWithObjects: NSFilenamesPboardType, nil]];
 
   double sec = 1.0 / (double) pGraphics->FPS();
