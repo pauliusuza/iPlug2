@@ -49,7 +49,7 @@ IPlugAPP::~IPlugAPP()
 #endif
 }
 
-bool IPlugAPP::EditorResizeFromDelegate(int viewWidth, int viewHeight)
+bool IPlugAPP::EditorResize(int viewWidth, int viewHeight)
 {
   bool parentResized = false;
     

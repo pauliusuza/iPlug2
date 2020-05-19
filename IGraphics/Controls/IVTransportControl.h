@@ -199,7 +199,10 @@ public:
 #endif
 #if APP_TRANSPORT_BAR_SAVE_BUTTON
     } else if (mSaveBtnRect.Contains(x,y)) {
-      GetUI()->PromptForFile(mFileName, mPath, EFileAction::Save, "fxp");
+      WDL_String fileName;
+      fileName.Set(mFileName.get_filepart());
+      GetUI()->PromptForFile(fileName, mPath, EFileAction::Save, "fxp");
+      mFileName = fileName;
       GetDelegate()->SendArbitraryMsgFromUI(EMsgTags::save, mTag, sizeof(mFileName.Get()), mFileName.Get());
 #endif
 #if APP_TRANSPORT_BAR_NEW_BUTTON
@@ -273,7 +276,7 @@ public:
     g.DrawText(mStyle.valueText, bpm.c_str(), mBpmRect);
     
     // draw play / stop button
-    DrawPressableRectangle(g, mPlayBtnRect, mPlay, mMouseOverPlay);
+    DrawPressableRectangle(g, mPlayBtnRect, mPlay, mMouseOverPlay, false);
     IRECT symbolRect = mPlayBtnRect.GetCentredInside(mPlayBtnRect.H()*0.5, mPlayBtnRect.H()*0.5);
     if(mPlay) {
       g.FillRect(mStyle.valueText.mFGColor, symbolRect);
@@ -283,7 +286,7 @@ public:
 
 #if APP_TRANSPORT_BAR_OPEN_BUTTON
     // draw open button
-    DrawPressableRectangle(g, mOpenBtnRect, false, mMouseOverOpen);
+    DrawPressableRectangle(g, mOpenBtnRect, false, mMouseOverOpen, false);
     mStyle.valueText.mSize = mOpenBtnRect.W() * 0.8;
     g.MeasureText(mStyle.valueText, "open", txtRealSize);
     while(txtRealSize.H() >= mOpenBtnRect.H() * 0.7) {
@@ -294,7 +297,7 @@ public:
 #endif
 #if APP_TRANSPORT_BAR_SAVE_BUTTON
     // draw save button
-    DrawPressableRectangle(g, mSaveBtnRect, false, mMouseOverSave);
+    DrawPressableRectangle(g, mSaveBtnRect, false, mMouseOverSave, false);
     mStyle.valueText.mSize = mSaveBtnRect.W() * 0.8;
     g.MeasureText(mStyle.valueText, "save", txtRealSize);
     while(txtRealSize.H() >= mSaveBtnRect.H() * 0.7) {
@@ -305,7 +308,7 @@ public:
 #endif
 #if APP_TRANSPORT_BAR_NEW_BUTTON
     // draw new button
-    DrawPressableRectangle(g, mNewBtnRect, false, mMouseOverNew);
+    DrawPressableRectangle(g, mNewBtnRect, false, mMouseOverNew, false);
     mStyle.valueText.mSize = mNewBtnRect.W() * 0.8;
     g.MeasureText(mStyle.valueText, "new", txtRealSize);
     while(txtRealSize.H() >= mNewBtnRect.H() * 0.7) {
