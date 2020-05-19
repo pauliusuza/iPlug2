@@ -160,7 +160,8 @@ AAX_Result GetEffectDescriptions(AAX_ICollection* pC)
     
     setupInfo.mNeedsOutputMIDI = PLUG_DOES_MIDI_OUT;
     setupInfo.mOutputMIDINodeName = PLUG_NAME" Midi";
-    setupInfo.mOutputMIDIChannelMask = 0x0001;
+    //setupInfo.mOutputMIDIChannelMask = 0x0001;
+    setupInfo.mOutputMIDIChannelMask = 0xFFFF;
     
     setupInfo.mNeedsTransport = true;
     setupInfo.mLatency = PLUG_LATENCY;
