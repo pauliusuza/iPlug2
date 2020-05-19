@@ -455,7 +455,7 @@ struct IColor
     col.A = static_cast<int>(a * 255.f);
     return col;
   }
-  
+
   /** /todo 
    * @param start /todo
    * @param dest /todo
@@ -549,6 +549,8 @@ const IBlend BLEND_25 = IBlend(EBlend::Default, 0.25f);
 const IBlend BLEND_10 = IBlend(EBlend::Default, 0.1f);
 const IBlend BLEND_05 = IBlend(EBlend::Default, 0.05f);
 const IBlend BLEND_01 = IBlend(EBlend::Default, 0.01f);
+const IBlend BLEND_DST_IN = IBlend(EBlend::DstIn, 1.f);
+const IBlend BLEND_DST_OVER = IBlend(EBlend::DstOver, 1.f);
 
 /** Used to manage fill behaviour for path based drawing back ends */
 struct IFillOptions
@@ -1055,13 +1057,14 @@ struct IRECT
     return vrect.SubRectHorizontal(nColumns, col);
   }
   
-  /** Get a subrect (by index) of this IRECT which is a cell in a grid of size (nRows * nColumns)
+  /** Get a subrect (by index) of this IRECT which is a cell (or union of nCells sequential cells on same row/column) in a grid of size (nRows * nColumns)
    * @param cellIndex Index of the desired cell in the cell grid
    * @param nRows Number of rows in the cell grid
    * @param nColumns Number of columns in the cell grid
    * @param dir Desired direction of indexing, by row (EDirection::Horizontal) or by column (EDirection::Vertical)
+   * @param nCells Number of desired sequential cells to join (on same row/column)
    * @return IRECT The resulting subrect */
-  inline IRECT GetGridCell(int cellIndex, int nRows, int nColumns, EDirection dir = EDirection::Horizontal) const
+  inline IRECT GetGridCell(int cellIndex, int nRows, int nColumns, EDirection dir = EDirection::Horizontal, int nCells = 1) const
   {
     assert(cellIndex <= nRows * nColumns); // not enough cells !
 
@@ -1076,7 +1079,13 @@ struct IRECT
           if(cell == cellIndex)
           {
             const IRECT vrect = SubRectVertical(nRows, row);
-            return vrect.SubRectHorizontal(nColumns, col);
+            IRECT rect = vrect.SubRectHorizontal(nColumns, col);
+
+            for (int n = 1; n < nCells && (col + n) < nColumns; n++)
+            {
+              rect = rect.Union(vrect.SubRectHorizontal(nColumns, col + n));
+            }
+            return rect;
           }
 
           cell++;
@@ -1092,7 +1101,13 @@ struct IRECT
           if(cell == cellIndex)
           {
             const IRECT hrect = SubRectHorizontal(nColumns, col);
-            return hrect.SubRectVertical(nRows, row);
+            IRECT rect = hrect.SubRectVertical(nRows, row);;
+
+            for (int n = 1; n < nCells && (row + n) < nRows; n++)
+            {
+              rect = rect.Union(hrect.SubRectVertical(nRows, row + n));
+            }
+            return rect;
           }
           
           cell++;
@@ -1601,50 +1616,6 @@ struct IRECT
     IRECT result = *this;
     result.HAlignTo(sr, align);
     return result;
-  }
-  
-  /**
-   * Vertically align the IRECT to the one given as reference
-   * @param IRECT the IRECT to use as reference
-   * @param EVAlign the aglignment requested, middle, top, bottom
-   */
-  IRECT GetVAligned(const IRECT& sr, EVAlign align) const
-  {
-    IRECT r;
-    switch (align) {
-      case EVAlign::Top:
-        r = IRECT(L, sr.T, R, sr.T+H());
-        break;
-      case EVAlign::Bottom:
-        r = IRECT(L, sr.B-H(), R, sr.B);
-        break;
-      case EVAlign::Middle:
-        r = IRECT(L,sr.T+(sr.H()*.5)-(H()*.5),R,sr.T+(sr.H()*.5)-(H()*.5)+H());
-        break;
-    }
-    return r;
-  }
-  
-  /**
-   * Horizontally align the IRECT to the one given as reference
-   * @param IRECT the IRECT to use as reference
-   * @param EVAlign the aglignment requested, center, near, far
-   */
-  IRECT GetHAligned(const IRECT& sr, EAlign align) const
-  {
-    IRECT r;
-    switch (align) {
-      case EAlign::Near:
-        r = IRECT(sr.L, T, sr.L+W(), B);
-        break;
-      case EAlign::Far:
-        r = IRECT(sr.R-W(), T, sr.R, B);
-        break;
-      case EAlign::Center:
-        r = IRECT(sr.L+(sr.W()*.5)-(W()*.5),T,sr.L+(sr.W()*.5)-(W()*.5)+W(), B);
-        break;
-    }
-    return r;
   }
   
   void DBGPrint() { DBGMSG("L: %f, T: %f, R: %f, B: %f,: W: %f, H: %f\n", L, T, R, B, W(), H()); }
@@ -2379,6 +2350,7 @@ static constexpr float DEFAULT_WIDGET_ANGLE = 0.f;
 const IText DEFAULT_LABEL_TEXT {DEFAULT_TEXT_SIZE + 5.f, EVAlign::Top};
 const IText DEFAULT_VALUE_TEXT {DEFAULT_TEXT_SIZE, EVAlign::Bottom};
 
+/** A struct encapsulating a set of properties used to configure IVControls */
 struct IVStyle
 {
   bool hideCursor = DEFAULT_HIDE_CURSOR;
