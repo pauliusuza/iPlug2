@@ -734,6 +734,16 @@ private:
 
 public:
 #pragma mark - Platform implementation
+  
+  /** Add an OS view as a sub-view, on top of the IGraphics view
+   * @param r The bounds where the view should be attached
+   * @param pView the platform view, which would be a HWND on Windows, NSView* on macOS or UIView* on iOS */
+  virtual void AttachPlatformView(const IRECT& r, void* pView) {};
+  
+  /** Remove a previously attached platform view from the IGraphics view
+   * @param pView the platform view to remove, which would be a HWND on Windows, NSView* on macOS or UIView* on iOS */
+  virtual void RemovePlatformView(void* pView) {};
+
   /** Get the x, y position in the graphics context of the mouse cursor
    * @param x Where the X position will be stored
    * @param y Where the Y position will be stored */
@@ -1093,12 +1103,10 @@ public:
   /**@return \c true if showning the control bounds */
   bool ShowControlBoundsEnabled() const { return mShowControlBounds; }
   
-  /** Live edit mode allows you to relocate controls at runtime in debug builds and save the locations to a predefined file (e.g. main plugin .cpp file) \todo we need a separate page for liveedit info
-   * @param enable Set \c true if you wish to enable live editing mode
-   * @param file The absolute path of the file which contains the layout info (correctly tagged) for live editing
-   * @param gridsize The size of the layout grid in pixels */
-  void EnableLiveEdit(bool enable, const char* file = 0, int gridsize = 10);
-  
+  /** Live edit mode allows you to relocate controls at runtime in debug builds
+   * @param enable Set \c true if you wish to enable live editing mode */
+  void EnableLiveEdit(bool enable);
+
   /**@return \c true if live edit mode is enabled */
   bool LiveEditEnabled() const { return mLiveEdit != nullptr; }
   
@@ -1266,6 +1274,10 @@ public:
    * @return A pointer to the IControl object at idx or nullptr if not found */
   IControl* GetControl(int idx) { return mControls.Get(idx); }
 
+  /** @param pControl Pointer to the control to get
+   * @return integer index of the control in mControls array or -1 if not found */
+  int GetControlIdx(IControl* pControl) const { return mControls.Find(pControl); }
+  
   /** @param ctrlTag The tag to look for
    * @return A pointer to the IControl object with the tag of nullptr if not found */
   IControl* GetControlWithTag(int ctrlTag);
@@ -1309,14 +1321,17 @@ public:
   /** @return The number of controls that have been added to this graphics context */
   int NControls() const { return mControls.GetSize(); }
 
-  /** Remove control from the control list */
-  void RemoveControl(IControl* pControl);
-  
   /** Remove controls from the control list with a particular tag.  */
   void RemoveControlWithTag(int ctrlTag);
   
   /** Remove controls from the control list above a particular index, (frees memory).  */
   void RemoveControls(int fromIdx);
+
+  /** Remove a control at a particular index, (frees memory). */
+  void RemoveControl(int idx);
+  
+  /** Remove a control at using ptr, (frees memory). */
+  void RemoveControl(IControl* pControl);
   
   /** Removes all regular IControls from the control list, as well as special controls (frees memory). */
   void RemoveAllControls();
