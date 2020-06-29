@@ -50,10 +50,6 @@ IGraphics::IGraphics(IGEditorDelegate& dlg, int w, int h, int fps, float scale)
 , mDrawScale(scale)
 , mMinScale(scale / 2)
 , mMaxScale(scale * 2)
-, mMinWidth(w / 2)
-, mMaxWidth(w * 2)
-, mMinHeight(h / 2)
-, mMaxHeight(h * 2)
 {
   mFPS = (fps > 0 ? fps : DEFAULT_FPS);
     
@@ -91,8 +87,8 @@ void IGraphics::SetScreenScale(int scale)
 
 void IGraphics::Resize(int w, int h, float scale, bool needsPlatformResize)
 {
-  w = Clip(w, mMinWidth, mMaxWidth);
-  h = Clip(h, mMinHeight, mMaxHeight);
+  GetDelegate()->ConstrainEditorResize(w, h);
+  
   scale = Clip(scale, mMinScale, mMaxScale);
   
   if (w == Width() && h == Height() && scale == GetDrawScale()) return;
@@ -273,9 +269,9 @@ IControl* IGraphics::AttachControl(IControl* pControl, int ctrlTag, const char* 
   return pControl;
 }
 
-void IGraphics::AttachCornerResizer(EUIResizerMode sizeMode, bool layoutOnResize)
+void IGraphics::AttachCornerResizer(EUIResizerMode sizeMode, bool layoutOnResize, const IColor& color, const IColor& mouseOverColor, const IColor& dragColor, float size)
 {
-  AttachCornerResizer(new ICornerResizerControl(GetBounds(), 20), sizeMode, layoutOnResize);
+  AttachCornerResizer(new ICornerResizerControl(GetBounds(), size, color, mouseOverColor, dragColor), sizeMode, layoutOnResize);
 }
 
 void IGraphics::AttachCornerResizer(ICornerResizerControl* pControl, EUIResizerMode sizeMode, bool layoutOnResize)

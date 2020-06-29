@@ -977,19 +977,6 @@ public:
     mMaxScale = std::max(lo, hi);
   }
   
-  /** /todo 
-   * @param widthLo /todo
-   * @param widthHi /todo
-   * @param heightLo /todo
-   * @param heightHi /todo */
-  void SetSizeConstraints(int widthLo, int widthHi, int heightLo, int heightHi)
-  {
-    mMinWidth = std::min(widthLo, widthHi);
-    mMaxWidth = std::max(widthLo, widthHi);
-    mMinHeight = std::min(heightLo, heightHi);
-    mMaxHeight = std::max(heightLo, heightHi);
-  }
-  
   /** \todo detailed description of how this works
    * @param w New width in pixels
    * @param h New height in pixels
@@ -1226,7 +1213,7 @@ public:
   
   /** Attach the default control to scale or increase the UI size by dragging the plug-in bottom right-hand corner
    * @param sizeMode Choose whether to scale or size the UI */
-  void AttachCornerResizer(EUIResizerMode sizeMode = EUIResizerMode::Scale, bool layoutOnResize = false);
+  void AttachCornerResizer(EUIResizerMode sizeMode = EUIResizerMode::Scale, bool layoutOnResize = false, const IColor& color = COLOR_TRANSLUCENT, const IColor& mouseOverColor = COLOR_BLACK, const IColor& dragColor = COLOR_BLACK, float size = 20.f);
 
   /** Attach your own control to scale or increase the UI size by dragging the plug-in bottom right-hand corner
    * @param pControl control a control that inherits from ICornerResizerControl
@@ -1650,10 +1637,6 @@ private:
   float mMouseDownY = -1.f;
   float mMinScale;
   float mMaxScale;
-  int mMinWidth;
-  int mMaxWidth;
-  int mMinHeight;
-  int mMaxHeight;
   int mLastClickedParam = kNoParameter;
   bool mEnableMouseOver = false;
   bool mStrict = false;
