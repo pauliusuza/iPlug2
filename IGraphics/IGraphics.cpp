@@ -123,6 +123,7 @@ void IGraphics::SetLayoutOnResize(bool layoutOnResize)
 void IGraphics::RemoveControlWithTag(int ctrlTag)
 {
   mControls.DeletePtr(GetControlWithTag(ctrlTag));
+  mCtrlTags.erase(ctrlTag);
   SetAllControlsDirty();
 }
 
@@ -136,14 +137,17 @@ void IGraphics::RemoveControls(int fromIdx)
     if(ControlIsCaptured(pControl))
       ReleaseMouseCapture();
 
-    if (pControl == mMouseOver)
+    if(pControl == mMouseOver)
       ClearMouseOver();
 
-    if (pControl == mInTextEntry)
+    if(pControl == mInTextEntry)
       mInTextEntry = nullptr;
 
-    if (pControl == mInPopupMenu)
+    if(pControl == mInPopupMenu)
       mInPopupMenu = nullptr;
+    
+    if(pControl->GetTag() > kNoTag)
+      mCtrlTags.erase(pControl->GetTag());
     
     mControls.Delete(idx--, true);
   }
@@ -161,14 +165,17 @@ void IGraphics::RemoveControl(IControl* pControl)
   if(ControlIsCaptured(pControl))
     ReleaseMouseCapture();
   
-  if (pControl == mMouseOver)
+  if(pControl == mMouseOver)
     ClearMouseOver();
   
-  if (pControl == mInTextEntry)
+  if(pControl == mInTextEntry)
     mInTextEntry = nullptr;
   
-  if (pControl == mInPopupMenu)
+  if(pControl == mInPopupMenu)
     mInPopupMenu = nullptr;
+  
+  if(pControl->GetTag() > kNoTag)
+    mCtrlTags.erase(pControl->GetTag());
   
   mControls.DeletePtr(pControl, true);
   
@@ -190,6 +197,8 @@ void IGraphics::RemoveAllControls()
 #endif
   
   mBubbleControls.Empty(true);
+  
+  mCtrlTags.clear();
   mControls.Empty(true);
 }
 
@@ -261,10 +270,19 @@ void IGraphics::AttachPanelBackground(const IPattern& color)
 
 IControl* IGraphics::AttachControl(IControl* pControl, int ctrlTag, const char* group)
 {
+  if(ctrlTag > kNoTag)
+  {
+    auto result = mCtrlTags.insert(std::make_pair(ctrlTag, pControl));
+    assert(result.second && "AttachControl failed: ctrl tags must be unique");
+    
+    if (!result.second)
+      return nullptr;
+  }
+  
   pControl->SetDelegate(*GetDelegate());
-  pControl->SetTag(ctrlTag);
   pControl->SetGroup(group);
   mControls.Add(pControl);
+    
   pControl->OnAttached();
   return pControl;
 }
@@ -394,16 +412,17 @@ void IGraphics::ShowFPSDisplay(bool enable)
 
 IControl* IGraphics::GetControlWithTag(int ctrlTag)
 {
-  for (auto c = 0; c < NControls(); c++)
-  {
-    IControl* pControl = GetControl(c);
-    if (pControl->GetTag() == ctrlTag)
-    {
-      return pControl;
-    }
-  }
+  IControl* pControl = mCtrlTags[ctrlTag];
   
-  return nullptr;
+  if(pControl != nullptr)
+  {
+    return pControl;
+  }
+  else
+  {
+    assert(pControl && "There is no control attached with this tag");
+    return nullptr;
+  }
 }
 
 void IGraphics::HideControl(int paramIdx, bool hide)
