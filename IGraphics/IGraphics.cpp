@@ -668,7 +668,7 @@ void IGraphics::DrawBitmap(const IBitmap& bitmap, const IRECT& bounds, int bmpSt
   return DrawBitmap(bitmap, bounds, srcX, srcY, pBlend);
 }
 
-void IGraphics::DrawBitmapedText(const IBitmap& bitmap, IRECT& bounds, IText& text, IBlend* pBlend, const char* str, bool vCenter, bool multiline, int charWidth, int charHeight, int charOffset)
+void IGraphics::DrawBitmapedText(const IBitmap& bitmap, const IRECT& bounds, IText& text, IBlend* pBlend, const char* str, bool vCenter, bool multiline, int charWidth, int charHeight, int charOffset)
 {
   if (CStringHasContents(str))
   {
@@ -970,7 +970,6 @@ void IGraphics::OnMouseDown(const std::vector<IMouseInfo>& points)
     
     if (pCapturedControl)
     {
-      
       int nVals = pCapturedControl->NVals();
       int valIdx = pCapturedControl->GetValIdxForPos(x, y);
       int paramIdx = pCapturedControl->GetParamIdx((valIdx > kNoValIdx) ? valIdx : 0);
@@ -1012,14 +1011,14 @@ void IGraphics::OnMouseDown(const std::vector<IMouseInfo>& points)
         }
 #endif
 
-      #ifndef IGRAPHICS_NO_CONTEXT_MENU
+#ifndef IGRAPHICS_NO_CONTEXT_MENU
       if (mod.R && paramIdx > kNoParameter)
       {
         ReleaseMouseCapture();
         PopupHostContextMenuForParam(pCapturedControl, paramIdx, x, y);
         return;
       }
-      #endif
+#endif
 
       for (int v = 0; v < nVals; v++)
       {
@@ -2297,8 +2296,8 @@ void IGraphics::SetQwertyMidiKeyHandlerFunc(std::function<void(const IMidiMsg& m
       case kVK_K: note = 12; break;
       case kVK_O: note = 13; break;
       case kVK_L: note = 14; break;
-      case kVK_Z: base -= 12; onOctSwitch(); return true;
-      case kVK_X: base += 12; onOctSwitch(); return true;
+      case kVK_Z: if(!isUp) { base -= 12; onOctSwitch(); } return true;
+      case kVK_X: if(!isUp) { base += 12; onOctSwitch(); } return true;
       default: return true; // don't beep, but don't do anything
     }
     
@@ -2315,7 +2314,7 @@ void IGraphics::SetQwertyMidiKeyHandlerFunc(std::function<void(const IMidiMsg& m
     }
     else {
       if(keysDown[pitch] == true) {
-        msg.MakeNoteOffMsg(pitch, 127, 0);
+        msg.MakeNoteOffMsg(pitch, 0);
         keysDown[pitch] = false;
         GetDelegate()->SendMidiMsgFromUI(msg);
         if(func)
