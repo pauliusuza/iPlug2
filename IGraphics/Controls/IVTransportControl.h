@@ -189,13 +189,13 @@ public:
       GetUI()->CreateTextEntry(*this, mStyle.valueText, mBpmRect, bpm.c_str(), EMsgTags::bpm);
     } else if (mPlayBtnRect.Contains(x,y)) {
       TogglePlay(!mPlay);
-      GetDelegate()->SendArbitraryMsgFromUI(EMsgTags::play, mTag, sizeof(bool), &mPlay);
+      GetDelegate()->SendArbitraryMsgFromUI(EMsgTags::play, GetTag(), sizeof(bool), &mPlay);
 #if APP_TRANSPORT_BAR_OPEN_BUTTON
     } else if (mOpenBtnRect.Contains(x,y)) {
       WDL_String fileName;
       GetUI()->PromptForFile(fileName, mPath, EFileAction::Open, "fxp");
       mFileName = fileName;
-      GetDelegate()->SendArbitraryMsgFromUI(EMsgTags::open, mTag, sizeof(mFileName.Get()), mFileName.Get());
+      GetDelegate()->SendArbitraryMsgFromUI(EMsgTags::open, GetTag(), sizeof(mFileName.Get()), mFileName.Get());
 #endif
 #if APP_TRANSPORT_BAR_SAVE_BUTTON
     } else if (mSaveBtnRect.Contains(x,y)) {
@@ -203,12 +203,12 @@ public:
       fileName.Set(mFileName.get_filepart());
       GetUI()->PromptForFile(fileName, mPath, EFileAction::Save, "fxp");
       mFileName = fileName;
-      GetDelegate()->SendArbitraryMsgFromUI(EMsgTags::save, mTag, sizeof(mFileName.Get()), mFileName.Get());
+      GetDelegate()->SendArbitraryMsgFromUI(EMsgTags::save, GetTag(), sizeof(mFileName.Get()), mFileName.Get());
 #endif
 #if APP_TRANSPORT_BAR_NEW_BUTTON
     } else if (mNewBtnRect.Contains(x,y)) {
       bool newProject = true;
-      GetDelegate()->SendArbitraryMsgFromUI(EMsgTags::blank, mTag, sizeof(bool), &newProject);
+      GetDelegate()->SendArbitraryMsgFromUI(EMsgTags::blank, GetTag(), sizeof(bool), &newProject);
 #endif
     }
   }
@@ -225,7 +225,7 @@ public:
     if(mBpmRect.Contains(mXdwn, mYdwn)) {
       double gearing = DEFAULT_GEARING/10.;
       mBPMVal = (mBPMVal + (double)dY / (double)(mBpmRect.T - mBpmRect.B) / gearing);
-      GetDelegate()->SendArbitraryMsgFromUI(EMsgTags::bpm, mTag, sizeof(int), &mBPMVal);
+      GetDelegate()->SendArbitraryMsgFromUI(EMsgTags::bpm, GetTag(), sizeof(int), &mBPMVal);
       SetDirty(false);
     }
   }
@@ -241,7 +241,7 @@ public:
     switch (valIdx) {
       case EMsgTags::bpm:
         mBPMVal = std::atoi(str);
-        GetDelegate()->SendArbitraryMsgFromUI(EMsgTags::bpm, mTag, sizeof(int), &mBPMVal);
+        GetDelegate()->SendArbitraryMsgFromUI(EMsgTags::bpm, GetTag(), sizeof(int), &mBPMVal);
         break;
     }
     SetDirty(false);
@@ -254,7 +254,7 @@ public:
   void Draw(IGraphics& g) override
   {
     
-    DrawBackGround(g, mRECT);
+    DrawBackground(g, mRECT);
     
     g.StartLayer(this,mRECT);
     

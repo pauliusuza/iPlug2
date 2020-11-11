@@ -220,12 +220,12 @@ bool IPlugAPP::OnMessage(int messageTag, int controlTag, int dataSize, const voi
       mAppHost->TogglePlay(*(bool*)pData);
       break;
     case IVTransportControl::EMsgTags::open:
-      LoadProgramFromFXP((char*)pData);
+      LoadPresetFromFXP((char*)pData);
       mCurrentFileName.Set((char*)pData);
       SetWindowTitle();
       break;
     case IVTransportControl::EMsgTags::save:
-      SaveProgramAsFXP((char*)pData);
+      SavePresetAsFXP((char*)pData);
       mCurrentFileName.Set((char*)pData);
       SetWindowTitle();
       break;
