@@ -35,7 +35,7 @@ if [ "$#" -eq 2 ]; then
   echo "Syncing Deps..."
   python tools/git-sync-deps
 
-  ./bin/gn gen ../../tmp/skia/$DIR_ARCH_STR/$CONFIG_STR --args='
+  ./bin/gn.exe gen ../../tmp/skia/$DIR_ARCH_STR/$CONFIG_STR --args='
   skia_use_system_libjpeg_turbo = false
   skia_use_system_libpng = false
   skia_use_system_zlib = false
@@ -81,7 +81,7 @@ if [ "$#" -eq 2 ]; then
     echo 'target_cpu = "x64"' >> ../../tmp/skia/$DIR_ARCH_STR/$CONFIG_STR/args.gn
   fi
 
-  ./bin/gn gen ../../tmp/skia/$DIR_ARCH_STR/$CONFIG_STR
+  ./bin/gn.exe gen ../../tmp/skia/$DIR_ARCH_STR/$CONFIG_STR
 
   ninja -C ../../tmp/skia/$DIR_ARCH_STR/$CONFIG_STR
 
