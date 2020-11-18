@@ -167,12 +167,12 @@ public:
    * @param y The Y coordinate of the mouse event
    * @param mod A struct indicating which modifier keys are held for the event
    */
-  void OnMouseDown(float x, float y, const IMouseMod& mod) override
-  {
-    mXdwn = x;
-    mYdwn = y;
-  }
-  
+//  void OnMouseDown(float x, float y, const IMouseMod& mod) override
+//  {
+//    mXdwn = x;
+//    mYdwn = y;
+//  }
+//  
   /**
    * Handles clicks on the various active area of the transport bar (buttons and
    * tempo box, overrides the standard IControl method
@@ -180,10 +180,14 @@ public:
    * @param y The Y coordinate of the mouse event
    * @param mod A struct indicating which modifier keys are held for the event
    */
-  void OnMouseUp(float x, float y, const IMouseMod& mod) override
+  void OnMouseDown(float x, float y, const IMouseMod& mod) override
   {
     mXdwn = -1;
     mYdwn = -1;
+    
+    mXdwn = x;
+    mYdwn = y;
+    
     if (mBpmRect.Contains(x,y)) {
       std::string bpm = std::to_string(mBPMVal).substr(0, std::to_string(mBPMVal).find(".") + 3);
       GetUI()->CreateTextEntry(*this, mStyle.valueText, mBpmRect, bpm.c_str(), EMsgTags::bpm);
