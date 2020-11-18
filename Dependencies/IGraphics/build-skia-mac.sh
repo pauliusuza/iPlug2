@@ -35,8 +35,9 @@ cc = "clang"
 cxx = "clang++"
 target_os = "mac"
 target_cpu = "x64"
-extra_cflags = ["-mmacosx-version-min=10.9"]
+extra_cflags = ["-mmacosx-version-min=10.7","-stdlib=libc++"]
 extra_cflags_c = ["-Wno-error"]
+
 '
 ninja -C ../../tmp/skia/macOS_x64
 
