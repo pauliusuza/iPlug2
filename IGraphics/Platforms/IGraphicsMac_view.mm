@@ -14,7 +14,7 @@
 #import <Metal/Metal.h>
 #endif
 
-#ifdef IGRAPHICS_IMGUI
+#if defined IGRAPHICS_IMGUI
 #import <Metal/Metal.h>
 #include "imgui.h"
 #import "imgui_impl_metal.h"
@@ -397,10 +397,6 @@ extern StaticStorage<CoreTextFontDescriptor> sFontDescriptorCache;
   self.layer.opaque = YES;
   self.layerContentsRedrawPolicy = NSViewLayerContentsRedrawDuringViewResize;
   
-#if defined IGRAPHICS_CAIRO
-  self.wantsLayer = YES;
-#endif
-  
   [self registerForDraggedTypes:[NSArray arrayWithObjects: NSFilenamesPboardType, nil]];
   
   #if defined IGRAPHICS_METAL
@@ -625,8 +621,7 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
   #if !defined IGRAPHICS_GL && !defined IGRAPHICS_METAL
   if (mGraphics)
   {
-    //if (!mGraphics->GetPlatformContext())
-      mGraphics->SetPlatformContext([self getCGContextRef]);
+    mGraphics->SetPlatformContext([self getCGContextRef]);
       
     if (mGraphics->GetPlatformContext())
     {
@@ -921,8 +916,8 @@ static void MakeCursorFromName(NSCursor*& cursor, const char *name)
   double hotX = [info[@"hotx-scaled"] doubleValue];
   double hotY = [info[@"hoty-scaled"] doubleValue];
   double blur = [info[@"blur"] doubleValue];
-  CGFloat offsetX = [info[@"shadowoffsetx"] doubleValue];
-  CGFloat offsetY = [info[@"shadowoffsety"] doubleValue];
+  double offsetX = [info[@"shadowoffsetx"] doubleValue];
+  double offsetY = [info[@"shadowoffsety"] doubleValue];
   double red = [info[@"shadowcolor"][0] doubleValue];
   double green = [info[@"shadowcolor"][1] doubleValue];
   double blue = [info[@"shadowcolor"][2] doubleValue];
@@ -1096,10 +1091,7 @@ static void MakeCursorFromName(NSCursor*& cursor, const char *name)
 {
   if (mTextFieldView)
     return;
-  
-  if (areaRect.size.height <= text.mSize) {
-    areaRect.size.height = text.mSize+10;
-  }
+
   mTextFieldView = [[IGRAPHICS_TEXTFIELD alloc] initWithFrame: areaRect];
   
   if (text.mVAlign == EVAlign::Middle)
@@ -1300,7 +1292,7 @@ static void MakeCursorFromName(NSCursor*& cursor, const char *name)
 
 @end
 
-#ifdef IGRAPHICS_IMGUI
+#if defined IGRAPHICS_IMGUI
 
 @implementation IGRAPHICS_IMGUIVIEW
 {
