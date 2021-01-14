@@ -29,13 +29,15 @@ skia_enable_skottie = true
 skia_enable_pdf = false
 skia_enable_particles = true
 skia_enable_gpu = true
+skia_use_gl = true
+skia_gl_standard = "gl"
 skia_enable_skparagraph = true
 skia_enable_sksl_interpreter = true
 cc = "clang"
 cxx = "clang++"
 target_os = "mac"
 target_cpu = "x64"
-extra_cflags = ["-mmacosx-version-min=10.7","-stdlib=libc++"]
+extra_cflags = ["-mmacosx-version-min=10.9","-stdlib=libc++"]
 extra_cflags_c = ["-Wno-error"]
 
 '

@@ -1,5 +1,5 @@
 // this is used for macOS Developer ID / Appstore code-signing
-CERTIFICATE_ID = Saverio Vigni
+CERTIFICATE_ID = HoRNet SRL
 DEVELOPMENT_TEAM = C2BJGWH5T3 // log in to developer.apple.com and see the end of the URL e.g. https://developer.apple.com/account/#/overview/686EDA2T8T
 
 // Which compiler to use
@@ -17,7 +17,7 @@ CLANG_WARN_DOCUMENTATION_COMMENTS = NO
 CLANG_ENABLE_OBJC_WEAK = YES
 
 // the minimum OS to support
-MACOSX_DEPLOYMENT_TARGET = 10.7
+MACOSX_DEPLOYMENT_TARGET = 10.9
 
 SHARED_PRECOMPS_DIR = $(TARGET_BUILD_DIR)/PCH
 
@@ -134,7 +134,7 @@ SKIA_LNK_FLAGS = $(LIB_SKIA) $(LIB_SKOTTIE) $(LIB_SKSG) $(LIB_SKSHAPER) $(LIB_SK
 SKIA_LNK_FLAGS = $(LIB_SKIA) $(LIB_SKOTTIE) $(LIB_SKSG) $(LIB_SKSHAPER) $(LIB_SKPARAGRAPH)
 IGRAPHICS_LNK_FLAGS = $(SKIA_LNK_FLAGS)
 
-ALL_FRAMEWORKS = -framework Cocoa -framework Carbon -framework CoreFoundation -framework CoreData -framework Foundation -framework CoreServices -framework QuartzCore 
+ALL_FRAMEWORKS = -framework Cocoa -framework Carbon -framework CoreFoundation -framework CoreData -framework Foundation -framework CoreServices -framework QuartzCore -framework OpenGL
 APP_FRAMEWORKS = -framework AppKit -framework CoreMIDI -framework CoreAudio
 AU_FRAMEWORKS = -framework AudioUnit -framework AudioToolbox -framework CoreAudio -framework CoreMIDI
 AUv3_FRAMEWORKS = -framework AudioToolbox -framework AVFoundation -framework CoreAudio -framework CoreAudioKit
