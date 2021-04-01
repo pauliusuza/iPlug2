@@ -805,13 +805,13 @@ public:
   void DrawPressableEllipse(IGraphics& g, const IRECT& bounds, bool pressed, bool mouseOver, bool disabled)
   {
     IRECT handleBounds = bounds;
-    IRECT centreBounds = bounds.GetPadded(-mStyle.shadowOffset);
+    IRECT centreBounds = bounds.GetPadded(-mStyle.shadowOffsetX, -mStyle.shadowOffsetY, -mStyle.shadowOffsetX, -mStyle.shadowOffsetY);
     IRECT shadowBounds = bounds.GetTranslated(mStyle.shadowOffset, mStyle.shadowOffset);
     const IBlend blend = mControl->GetBlend();
     const float contrast = disabled ? -GRAYED_ALPHA : 0.f;
     
-    if(!pressed && !disabled && mStyle.drawShadows)
-      g.FillEllipse(GetColor(kSH), shadowBounds);
+    //if(!pressed && !disabled && mStyle.drawShadows)
+    //  g.FillEllipse(GetColor(kSH), shadowBounds);
    
     if (pressed)
     {
@@ -830,7 +830,9 @@ public:
         g.FillEllipse(GetColor(kPR).WithContrast(contrast), centreBounds/*, &blend*/);
       }
       else
+      {
         g.FillEllipse(GetColor(kPR).WithContrast(contrast), handleBounds/*, &blend*/);
+      }
     }
     else
     {
@@ -857,6 +859,7 @@ public:
         // Shade when hovered
         if (mouseOver)
           g.FillEllipse(GetColor(kHL), handleBounds, &blend);
+
       }
     }
     
@@ -878,8 +881,8 @@ public:
                                bool rtl = true, bool rtr = true, bool rbl = true, bool rbr = true)
   {
     IRECT handleBounds = GetAdjustedHandleBounds(bounds);
-    IRECT centreBounds = handleBounds.GetPadded(-mStyle.shadowOffset);
-    IRECT shadowBounds = handleBounds.GetTranslated(mStyle.shadowOffset, mStyle.shadowOffset);
+    IRECT centreBounds = handleBounds; //.GetPadded(-mStyle.shadowOffset);
+    IRECT shadowBounds = handleBounds; //.GetTranslated(mStyle.shadowOffset, mStyle.shadowOffset);
     const IBlend blend = mControl->GetBlend();
     const float contrast = disabled ? -GRAYED_ALPHA : 0.f;
     float cR = GetRoundedCornerRadius(handleBounds);
@@ -914,8 +917,8 @@ public:
     else
     {
       //outer shadow
-      if (mStyle.drawShadows)
-        g.FillRoundRect(GetColor(kSH), shadowBounds, tlr, trr, blr, brr, &blend);
+      //if (mStyle.drawShadows)
+      //  g.FillRoundRect(GetColor(kSH), shadowBounds, tlr, trr, blr, brr, &blend);
 
       // Embossed style unpressed
       if (mStyle.emboss)

@@ -111,7 +111,18 @@ void IVSwitchControl::Draw(IGraphics& g)
 {
   DrawBackground(g, mRECT);
   DrawLabel(g);
+  
+  if(mStyle.drawShadows) g.StartLayer(this, mRECT);
   DrawWidget(g);
+  if(mStyle.drawShadows) {
+    ILayerPtr knobCircle = g.EndLayer();
+    if(mMouseDown) {
+      g.ApplyLayerDropShadow(knobCircle, IShadow(mStyle.colorSpec.GetColor(kSH), mStyle.shadowBlur, 0, 0, mStyle.shadowAlpha));
+    } else {
+      g.ApplyLayerDropShadow(knobCircle, IShadow(mStyle.colorSpec.GetColor(kSH), mStyle.shadowBlur, mStyle.shadowOffsetX, mStyle.shadowOffsetY, mStyle.shadowAlpha));
+    }
+    g.DrawLayer(knobCircle);
+  }
   DrawValue(g, false);
 }
 
@@ -535,7 +546,21 @@ void IVKnobControl::Draw(IGraphics& g)
 {
   DrawBackground(g, mRECT);
   DrawLabel(g);
+  
+  if(mStyle.drawShadows) g.StartLayer(this, mRECT);
+  
   DrawWidget(g);
+  
+  if(mStyle.drawShadows) {
+    ILayerPtr knobCircle = g.EndLayer();
+    if(mMouseDown) {
+      g.ApplyLayerDropShadow(knobCircle, IShadow(mStyle.colorSpec.GetColor(kSH), mStyle.shadowBlur, 0, 0, mStyle.shadowAlpha));
+    } else {
+      g.ApplyLayerDropShadow(knobCircle, IShadow(mStyle.colorSpec.GetColor(kSH), mStyle.shadowBlur, mStyle.shadowOffsetX, mStyle.shadowOffsetY, mStyle.shadowAlpha));
+    }
+    g.DrawLayer(knobCircle);
+  }
+  
   DrawValue(g, mValueMouseOver);
 }
 

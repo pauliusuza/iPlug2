@@ -2462,6 +2462,10 @@ struct IVStyle
   float roundness = DEFAULT_ROUNDNESS;
   float frameThickness = DEFAULT_FRAME_THICKNESS;
   float shadowOffset = DEFAULT_SHADOW_OFFSET;
+  float shadowOffsetX = DEFAULT_SHADOW_OFFSET;
+  float shadowOffsetY = DEFAULT_SHADOW_OFFSET;
+  float shadowBlur = 0;
+  float shadowAlpha = 1.;
   float widgetFrac = DEFAULT_WIDGET_FRAC;
   float angle = DEFAULT_WIDGET_ANGLE;
   IVColorSpec colorSpec = DEFAULT_COLOR_SPEC;
@@ -2531,6 +2535,10 @@ struct IVStyle
   IVStyle WithRoundness(float v) const { IVStyle newStyle = *this; newStyle.roundness = Clip(v, 0.f, 1.f); return newStyle; }
   IVStyle WithFrameThickness(float v) const { IVStyle newStyle = *this; newStyle.frameThickness = v; return newStyle; }
   IVStyle WithShadowOffset(float v) const { IVStyle newStyle = *this; newStyle.shadowOffset = v; return newStyle; }
+  IVStyle WithShadowOffsetX(float v) const { IVStyle newStyle = *this; newStyle.shadowOffsetX = v; return newStyle; }
+  IVStyle WithShadowOffsetY(float v) const { IVStyle newStyle = *this; newStyle.shadowOffsetY = v; return newStyle; }
+  IVStyle WithShadowBlur(float v) const { IVStyle newStyle = *this; newStyle.shadowBlur = v; return newStyle; }
+  IVStyle WithShadowAlpha(float v) const { IVStyle newStyle = *this; newStyle.shadowAlpha = v; return newStyle; }
   IVStyle WithDrawShadows(bool v = true) const { IVStyle newStyle = *this; newStyle.drawShadows = v; return newStyle; }
   IVStyle WithDrawFrame(bool v = true) const { IVStyle newStyle = *this; newStyle.drawFrame = v; return newStyle; }
   IVStyle WithWidgetFrac(float v) const { IVStyle newStyle = *this; newStyle.widgetFrac = Clip(v, 0.f, 1.f); return newStyle; }
