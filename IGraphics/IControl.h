@@ -567,7 +567,6 @@ private:
   IGraphics* mGraphics = nullptr;
   IActionFunction mActionFunc = nullptr;
   IActionFunction mAnimationEndActionFunc = nullptr;
-  IActionFunction mAnimationEndActionFuncQueued = nullptr;
   IAnimationFunction mAnimationFunc = nullptr;
   TimePoint mAnimationStartTime;
   Milliseconds mAnimationDuration;
@@ -1536,9 +1535,6 @@ protected:
       }
     }
     
-    assert(fillRect.W() >= 0.);
-    assert(fillRect.H() >= 0.);
-    
     if(stepped)
     {
       int step = GetStepIdxForPos(fillRect.R, fillRect.T);
@@ -1719,8 +1715,13 @@ protected:
 class IDirBrowseControlBase : public IControl
 {
 public:
-  IDirBrowseControlBase(const IRECT& bounds, const char* extension /* e.g. ".txt"*/)
+  /** Creates an IDirBrowseControlBase
+   * @param bounds The control's bounds
+   * @param extension The file extenstion to browse for, e.g excluding the dot e.g. "txt"
+   * @param showFileExtension Should the meu show the file extension */
+  IDirBrowseControlBase(const IRECT& bounds, const char* extension, bool showFileExtensions = true)
   : IControl(bounds)
+  , mShowFileExtensions(showFileExtensions)
   {
     mExtension.Set(extension);
   }

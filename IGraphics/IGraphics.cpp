@@ -77,7 +77,7 @@ IGraphics::~IGraphics()
   svgStorage.Release();
 }
 
-void IGraphics::SetScreenScale(int scale)
+void IGraphics::SetScreenScale(float scale)
 {
   mScreenScale = scale;
   int windowWidth = WindowWidth() * GetPlatformWindowScale();
@@ -464,7 +464,7 @@ void IGraphics::DisableControl(int paramIdx, bool disable)
   ForMatchingControls(&IControl::SetDisabled, paramIdx, disable);
 }
 
-void IGraphics::ForControlWithParam(int paramIdx, std::function<void(IControl& control)> func)
+void IGraphics::ForControlWithParam(int paramIdx, std::function<void(IControl* pControl)> func)
 {
   for (auto c = 0; c < NControls(); c++)
   {
@@ -472,13 +472,13 @@ void IGraphics::ForControlWithParam(int paramIdx, std::function<void(IControl& c
 
     if (pControl->LinkedToParam(paramIdx) > kNoValIdx)
     {
-      func(*pControl);
+      func(pControl);
       // Could be more than one, don't break until we check them all.
     }
   }
 }
 
-void IGraphics::ForControlInGroup(const char* group, std::function<void(IControl& control)> func)
+void IGraphics::ForControlInGroup(const char* group, std::function<void(IControl* pControl)> func)
 {
   for (auto c = 0; c < NControls(); c++)
   {
@@ -487,44 +487,44 @@ void IGraphics::ForControlInGroup(const char* group, std::function<void(IControl
     if (CStringHasContents(pControl->GetGroup()))
     {
       if (strcmp(pControl->GetGroup(), group) == 0)
-        func(*pControl);
+        func(pControl);
       // Could be more than one, don't break until we check them all.
     }
   }
 }
 
-void IGraphics::ForStandardControlsFunc(std::function<void(IControl& control)> func)
+void IGraphics::ForStandardControlsFunc(std::function<void(IControl* pControl)> func)
 {
   for (auto c = 0; c < NControls(); c++)
-    func(*GetControl(c));
+    func(GetControl(c));
 }
 
-void IGraphics::ForAllControlsFunc(std::function<void(IControl& control)> func)
+void IGraphics::ForAllControlsFunc(std::function<void(IControl* pControl)> func)
 {
   ForStandardControlsFunc(func);
   
   if (mPerfDisplay)
-    func(*mPerfDisplay);
+    func(mPerfDisplay.get());
   
 #ifndef NDEBUG
   if (mLiveEdit)
-    func(*mLiveEdit);
+    func(mLiveEdit.get());
 #endif
   
   if (mCornerResizer)
-    func(*mCornerResizer);
+    func(mCornerResizer.get());
   
   if (mTextEntryControl)
-    func(*mTextEntryControl);
+    func(mTextEntryControl.get());
   
   if (mPopupControl)
-    func(*mPopupControl);
+    func(mPopupControl.get());
   
   if (mBubbleControls.GetSize())
   {
     for(int i = 0;i<mBubbleControls.GetSize();i++)
     {
-      func(*mBubbleControls.Get(i));
+      func(mBubbleControls.Get(i));
     }
   }
 }
@@ -532,13 +532,13 @@ void IGraphics::ForAllControlsFunc(std::function<void(IControl& control)> func)
 template<typename T, typename... Args>
 void IGraphics::ForAllControls(T method, Args... args)
 {
-  ForAllControlsFunc([method, args...](IControl& control) { (control.*method)(args...); });
+  ForAllControlsFunc([method, args...](IControl* pControl) { (pControl->*method)(args...); });
 }
 
 template<typename T, typename... Args>
 void IGraphics::ForMatchingControls(T method, int paramIdx, Args... args)
 {
-  ForControlWithParam(paramIdx, [method, args...](IControl& control) { (control.*method)(args...); });
+  ForControlWithParam(paramIdx, [method, args...](IControl* pControl) { (pControl->*method)(args...); });
 }
 
 void IGraphics::SetAllControlsDirty()
@@ -553,10 +553,10 @@ void IGraphics::SetAllControlsClean()
 
 void IGraphics::AssignParamNameToolTips()
 {
-  auto func = [](IControl& control)
+  auto func = [](IControl* pControl)
   {
-    if (control.GetParamIdx() > kNoParameter)
-      control.SetTooltip(control.GetParam()->GetName());
+    if (pControl->GetParamIdx() > kNoParameter)
+      pControl->SetTooltip(pControl->GetParam()->GetName());
   };
   
   ForStandardControlsFunc(func);
@@ -567,14 +567,14 @@ void IGraphics::UpdatePeers(IControl* pCaller, int callerValIdx) // TODO: this c
   double value = pCaller->GetValue(callerValIdx);
   int paramIdx = pCaller->GetParamIdx(callerValIdx);
     
-  auto func = [pCaller, paramIdx, value](IControl& control)
+  auto func = [pCaller, paramIdx, value](IControl* pControl)
   {
-    int valIdx = control.LinkedToParam(paramIdx);
+    int valIdx = pControl->LinkedToParam(paramIdx);
 
     // Not actually called from the delegate, but we don't want to push the updates back to the delegate
-    if ((valIdx > kNoValIdx) && (&control != pCaller))
+    if ((valIdx > kNoValIdx) && (pControl != pCaller))
     {
-      control.SetValueFromDelegate(value, valIdx);
+      pControl->SetValueFromDelegate(value, valIdx);
     }
   };
     
@@ -781,16 +781,15 @@ bool IGraphics::IsDirty(IRECTList& rects)
   if (mDisplayTickFunc)
     mDisplayTickFunc();
 
-  ForAllControlsFunc([](IControl& control) { control.Animate(); } );
+  ForAllControlsFunc([](IControl* pControl) { pControl->Animate(); } );
 
   bool dirty = false;
     
-  auto func = [&dirty, &rects](IControl& control)
-  {
-    if (control.IsDirty())
+  auto func = [&dirty, &rects](IControl* pControl) {
+    if (pControl->IsDirty())
     {
       // N.B padding outlines for single line outlines
-      rects.Add(control.GetRECT().GetPadded(0.75));
+      rects.Add(pControl->GetRECT().GetPadded(0.75));
       dirty = true;
     }
   };
@@ -865,7 +864,7 @@ void IGraphics::DrawControl(IControl* pControl, const IRECT& bounds, float scale
 
 void IGraphics::Draw(const IRECT& bounds, float scale)
 {
-  ForAllControlsFunc([this, bounds, scale](IControl& control) { DrawControl(&control, bounds, scale); });
+  ForAllControlsFunc([this, bounds, scale](IControl* pControl) { DrawControl(pControl, bounds, scale); });
 
 #ifndef NDEBUG
   if (mShowAreaDrawn)
@@ -1039,7 +1038,7 @@ void IGraphics::OnMouseUp(const std::vector<IMouseInfo>& points)
             GetDelegate()->EndInformHostOfParamChangeFromUI(pCapturedControl->GetParamIdx(v));
         }
         
-        mCapturedMap.erase(itr);
+        mCapturedMap.erase(mod.touchID);
       }
     }
   }
@@ -1445,9 +1444,13 @@ void IGraphics::PopupHostContextMenuForParam(IControl* pControl, int paramIdx, f
 
         pVST3ContextMenu->addItem(item, pControl);
       }
-
+#ifdef OS_WIN
+      x *= GetTotalScale();
+      y *= GetTotalScale();
+#else
       x *= GetDrawScale();
       y *= GetDrawScale();
+#endif
       pVST3ContextMenu->popup((Steinberg::UCoord) x, (Steinberg::UCoord) y);
       pVST3ContextMenu->release();
     }
@@ -1490,8 +1493,8 @@ void IGraphics::OnDragResize(float x, float y)
 IBitmap IGraphics::GetScaledBitmap(IBitmap& src)
 {
   //TODO: bug with # frames!
-//  return LoadBitmap(src.GetResourceName().Get(), src.N(), src.GetFramesAreHorizontal(), (GetScreenScale() == 1 && GetDrawScale() > 1.) ? 2 : 0 /* ??? */);
-  return LoadBitmap(src.GetResourceName().Get(), src.N(), src.GetFramesAreHorizontal(), GetScreenScale());
+//  return LoadBitmap(src.GetResourceName().Get(), src.N(), src.GetFramesAreHorizontal(), (GetRoundedScreenScale() == 1 && GetDrawScale() > 1.) ? 2 : 0 /* ??? */);
+  return LoadBitmap(src.GetResourceName().Get(), src.N(), src.GetFramesAreHorizontal(), GetRoundedScreenScale());
 }
 
 void IGraphics::EnableTooltips(bool enable)
@@ -1693,7 +1696,7 @@ WDL_TypedBuf<uint8_t> IGraphics::LoadResource(const char* fileNameOrResID, const
 IBitmap IGraphics::LoadBitmap(const char* name, int nStates, bool framesAreHorizontal, int targetScale)
 {
   if (targetScale == 0)
-    targetScale = GetScreenScale();
+    targetScale = GetRoundedScreenScale();
 
   StaticStorage<APIBitmap>::Accessor storage(sBitmapCache);
   APIBitmap* pAPIBitmap = storage.Find(name, targetScale);
@@ -1755,7 +1758,7 @@ IBitmap IGraphics::LoadBitmap(const char* name, int nStates, bool framesAreHoriz
 IBitmap IGraphics::LoadBitmap(const char *name, const void *pData, int dataSize, int nStates, bool framesAreHorizontal, int targetScale)
 {
   if (targetScale == 0)
-    targetScale = GetScreenScale();
+    targetScale = GetRoundedScreenScale();
 
   StaticStorage<APIBitmap>::Accessor storage(sBitmapCache);
   APIBitmap* pAPIBitmap = storage.Find(name, targetScale);
@@ -1817,7 +1820,7 @@ void IGraphics::RetainBitmap(const IBitmap& bitmap, const char* cacheName)
 
 IBitmap IGraphics::ScaleBitmap(const IBitmap& inBitmap, const char* name, int scale)
 {
-  int screenScale = GetScreenScale();
+  int screenScale = GetRoundedScreenScale();
   float drawScale = GetDrawScale();
 
   mScreenScale = scale;
@@ -1965,7 +1968,7 @@ void IGraphics::StartLayer(IControl* pControl, const IRECT& r, bool cacheable)
   const int w = static_cast<int>(std::ceil(pixelBackingScale * std::ceil(alignedBounds.W())));
   const int h = static_cast<int>(std::ceil(pixelBackingScale * std::ceil(alignedBounds.H())));
 
-  PushLayer(new ILayer(CreateAPIBitmap(w, h, GetScreenScale(), GetDrawScale(), cacheable), alignedBounds, pControl, pControl ? pControl->GetRECT() : IRECT()));
+  PushLayer(new ILayer(CreateAPIBitmap(w, h, GetRoundedScreenScale(), GetDrawScale(), cacheable), alignedBounds, pControl, pControl ? pControl->GetRECT() : IRECT()));
 }
 
 void IGraphics::ResumeLayer(ILayerPtr& layer)
@@ -2023,7 +2026,7 @@ bool IGraphics::CheckLayer(const ILayerPtr& layer)
     layer->Invalidate();
   }
 
-  return pBitmap && !layer->mInvalid && pBitmap->GetDrawScale() == GetDrawScale() && pBitmap->GetScale() == GetScreenScale();
+  return pBitmap && !layer->mInvalid && pBitmap->GetDrawScale() == GetDrawScale() && pBitmap->GetScale() == GetRoundedScreenScale();
 }
 
 void IGraphics::DrawLayer(const ILayerPtr& layer, const IBlend* pBlend)

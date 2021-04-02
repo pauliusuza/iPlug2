@@ -341,9 +341,6 @@ void IPlugAAX::RenderAudio(AAX_SIPlugRenderInfo* pRenderInfo, const TParamValPai
     
     mTransport->GetCurrentTickPosition(&ppqPos);
     timeInfo.mPPQPos = (double) ppqPos / 960000.0;
-    if(timeInfo.mPPQPos < 0) {
-      timeInfo.mPPQPos = 0;
-    }
     
     if(timeInfo.mPPQPos < 0)
       timeInfo.mPPQPos = 0;
@@ -533,15 +530,34 @@ AAX_Result IPlugAAX::CompareActiveChunk(const AAX_SPlugInChunk* pChunk, AAX_CBoo
   return AAX_SUCCESS;
 }
 
-AAX_Result IPlugAAX::NotificationReceived (AAX_CTypeID type, const void* data, uint32_t size)
+AAX_Result IPlugAAX::NotificationReceived (AAX_CTypeID type, const void* pData, uint32_t size)
 {
-  if (type == AAX_eNotificationEvent_TrackNameChanged && data != nullptr)
+  switch (type)
   {
-    //AudioProcessor::TrackProperties props;
-    mChannelName.Set( static_cast<const AAX_IString*> (data)->Get() );
+    case AAX_eNotificationEvent_TrackNameChanged:
+      if (pData)
+        mTrackName.Set(static_cast<const AAX_IString*>(pData)->Get());
+      break;
+//    case AAX_eNotificationEvent_SessionBeingOpened:
+//      break;
+//    case AAX_eNotificationEvent_PresetOpened:
+//      break;
+    case AAX_eNotificationEvent_EnteringOfflineMode:
+      SetRenderingOffline(true);
+      break;
+    case AAX_eNotificationEvent_ExitingOfflineMode:
+      SetRenderingOffline(false);
+      break;
+//    case AAX_eNotificationEvent_SideChainBeingConnected:
+//      break;
+//    case AAX_eNotificationEvent_SideChainBeingDisconnected:
+//      break;
+//    case AAX_eNotificationEvent_SignalLatencyChanged:
+    default:
+      break;
   }
-  
-  return AAX_CEffectParameters::NotificationReceived (type, data, size);
+
+  return AAX_CEffectParameters::NotificationReceived (type, pData, size);
 }
 
 void IPlugAAX::BeginInformHostOfParamChange(int idx)
@@ -573,8 +589,13 @@ bool IPlugAAX::EditorResize(int viewWidth, int viewHeight)
     oEffectViewSize.vert = (float) viewHeight;
     
     if (pViewInterface && (viewWidth != GetEditorWidth() || viewHeight != GetEditorHeight()))
-      pViewInterface->GetViewContainer()->SetViewSize(oEffectViewSize);
-
+    {
+      auto* viewContainer = pViewInterface->GetViewContainer();
+      
+      if (viewContainer)
+        viewContainer->SetViewSize(oEffectViewSize);
+    }
+    
     SetEditorSize(viewWidth, viewHeight);
   }
   

@@ -44,4 +44,5 @@ Projects*
 Examples/IPlugSwift/Pods
 PodFile.lock
 */*/.vscode/ipch
-HatefishRhyGenerator.RPP
+Examples/*/EBWebView
+Examples/*/packages

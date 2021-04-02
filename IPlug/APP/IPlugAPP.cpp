@@ -16,6 +16,18 @@
 #include <IPlugSWELL.h>
 #endif
 
+#if defined OS_MAC
+int GetTitleBarOffset()
+{
+  int offset = GetSystemMetrics(SM_CYMENU);
+  
+  if(SWELL_GetOSXVersion() >= 0x1100)
+    offset += 4;
+  
+  return offset;
+}
+#endif
+
 using namespace iplug;
 
 //class IGraphics;
@@ -56,7 +68,7 @@ bool IPlugAPP::EditorResize(int viewWidth, int viewHeight)
   if (viewWidth != GetEditorWidth() || viewHeight != GetEditorHeight())
   {
     #ifdef OS_MAC
-    const int titleBarOffset = 22;
+    const int titleBarOffset = GetTitleBarOffset();
     RECT r;
     GetWindowRect(gHWND, &r);
     SetWindowPos(gHWND, 0, r.left, r.bottom - viewHeight - titleBarOffset, viewWidth, viewHeight + titleBarOffset, 0);

@@ -92,7 +92,7 @@ public:
   bool EditorResize(int viewWidth, int viewHeight) override;
   
   /** Get the name of the track that the plug-in is inserted on */
-  virtual void GetTrackName(WDL_String& str) override { str = mChannelName; };
+  virtual void GetTrackName(WDL_String& str) override { str = mTrackName; };
   
   //IPlug Processor Overrides
   void SetLatency(int samples) override;
@@ -124,7 +124,7 @@ private:
   WDL_PtrList<WDL_String> mParamIDs;
   IMidiQueue mMidiOutputQueue;
   int mMaxNChansForMainInputBus = 0;
-  WDL_String mChannelName;
+  WDL_String mTrackName;
 };
 
 IPlugAAX* MakePlug(const InstanceInfo& info);
