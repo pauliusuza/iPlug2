@@ -623,6 +623,15 @@ void IVKnobControl::OnMouseDown(float x, float y, const IMouseMod& mod)
   SetDirty(false);
 }
 
+void IVKnobControl::OnMouseDblClick(float x, float y, const IMouseMod& mod)
+{
+  #ifdef AAX_API
+  PromptUserInput(mValueBounds);
+  #else
+  SetValueToDefault(GetValIdxForPos(x, y));
+  #endif
+}
+
 void IVKnobControl::OnMouseUp(float x, float y, const IMouseMod& mod)
 {
   IKnobControlBase::OnMouseUp(x, y, mod);
@@ -770,6 +779,15 @@ void IVSliderControl::OnMouseDown(float x, float y, const IMouseMod& mod)
   { 
     ISliderControlBase::OnMouseDown(x, y, mod);
   }
+}
+
+void IVSliderControl::OnMouseDblClick(float x, float y, const IMouseMod& mod)
+{
+  #ifdef AAX_API
+  PromptUserInput(mValueBounds);
+  #else
+  SetValueToDefault(GetValIdxForPos(x, y));
+  #endif
 }
 
 void IVSliderControl::OnMouseUp(float x, float y, const IMouseMod& mod)
