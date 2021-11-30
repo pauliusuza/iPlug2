@@ -592,7 +592,7 @@ bool IPlugAPPHost::InitAudio(uint32_t inId, uint32_t outId, uint32_t sr, uint32_
          sr, mBufferSize, inId, GetAudioDeviceName(inId).c_str(), outId, GetAudioDeviceName(outId).c_str(), iParams.nChannels, oParams.nChannels);
 
   RtAudio::StreamOptions options;
-  options.flags = RTAUDIO_NONINTERLEAVED;
+  options.flags = RTAUDIO_NONINTERLEAVED | RTAUDIO_SCHEDULE_REALTIME;
   // options.streamName = BUNDLE_NAME; // JACK stream name, not used on other streams
 
   mBufIndex = 0;
@@ -792,6 +792,9 @@ int IPlugAPPHost::AudioCallback(void* pOutputBuffer, void* pInputBuffer, uint32_
           _this->mTimeInfo.mSamplePos += APP_SIGNAL_VECTOR_SIZE;
           _this->mTimeInfo.mPPQPos += (double)APP_SIGNAL_VECTOR_SIZE / samplesPerBeat;
         }
+#else
+        _this->mIPlug->AppProcess(_this->mInputBufPtrs.GetList(),  _this->mOutputBufPtrs.GetList(), APP_SIGNAL_VECTOR_SIZE);
+        _this->mSamplesElapsed += APP_SIGNAL_VECTOR_SIZE;
 #endif
         
       }
