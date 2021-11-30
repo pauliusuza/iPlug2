@@ -1024,8 +1024,12 @@ public:
       {
         IRECT textRect;
         mControl->GetUI()->MeasureText(mStyle.labelText, mLabelStr.Get(), textRect);
-
-        mLabelBounds = parent.GetFromTop(textRect.H()).GetCentredInside(textRect.W(), textRect.H());
+        if(mStyle.labelText.mAlign == EAlign::Center)
+          mLabelBounds = parent.GetFromTop(textRect.H()).GetCentredInside(textRect.W(), textRect.H());
+        if(mStyle.labelText.mAlign == EAlign::Near)
+          mLabelBounds = parent.GetFromTop(textRect.H()).GetFromLeft(textRect.W());
+        if(mStyle.labelText.mAlign == EAlign::Far)
+          mLabelBounds = parent.GetFromTop(textRect.H()).GetFromRight(textRect.W());
       }
       else
         mLabelBounds = IRECT();
@@ -1038,10 +1042,12 @@ public:
     {
       IRECT textRect;
       
+      float valueDisplayWidth = 0;
+      
       if(CStringHasContents(mValueStr.Get()))
-        mControl->GetUI()->MeasureText(mStyle.valueText, mValueStr.Get(), textRect);
+        valueDisplayWidth = mControl->GetUI()->MeasureText(mStyle.valueText, mValueStr.Get(), textRect);
 
-      const float valueDisplayWidth = textRect.W() * mValueDisplayFrac;
+      valueDisplayWidth *= mValueDisplayFrac;
 
       switch (mStyle.valueText.mVAlign)
       {
