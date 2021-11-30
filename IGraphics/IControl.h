@@ -283,7 +283,7 @@ public:
 
   /** Set the Text object typically used to determine font/layout/size etc of the main text in a control
    * @param txt An IText struct with the desired formatting */
-  void SetText(const IText& txt) { mText = txt; }
+  virtual void SetText(const IText& txt) { mText = txt; }
 
   /** Set the Blend for this control. This can be used differently by different controls, or not at all.
    *  By default it is used to change the opacity of controls when they are disabled */
@@ -1261,8 +1261,8 @@ public:
   IVTrackControlBase(const IRECT& bounds, const char* label, const IVStyle& style, int maxNTracks = 1, int nSteps = 0, EDirection dir = EDirection::Horizontal, std::initializer_list<const char*> trackNames = {})
   : IControl(bounds)
   , IVectorBase(style)
-  , mNSteps(nSteps)
   , mDirection(dir)
+  , mNSteps(nSteps)
   {
     SetNVals(maxNTracks);
     mTrackBounds.Resize(maxNTracks);
@@ -1288,8 +1288,8 @@ public:
   IVTrackControlBase(const IRECT& bounds, const char* label, const IVStyle& style, int lowParamidx, int maxNTracks = 1, int nSteps = 0, EDirection dir = EDirection::Horizontal, std::initializer_list<const char*> trackNames = {})
   : IControl(bounds)
   , IVectorBase(style)
-  , mNSteps(nSteps)
   , mDirection(dir)
+  , mNSteps(nSteps)
   {
     SetNVals(maxNTracks);
     mTrackBounds.Resize(maxNTracks);
@@ -1315,8 +1315,8 @@ public:
   IVTrackControlBase(const IRECT& bounds, const char* label, const IVStyle& style, const std::initializer_list<int>& params, int nSteps = 0, EDirection dir = EDirection::Horizontal, std::initializer_list<const char*> trackNames = {})
   : IControl(bounds)
   , IVectorBase(style)
-  , mNSteps(nSteps)
   , mDirection(dir)
+  , mNSteps(nSteps)
   {
     int maxNTracks = static_cast<int>(params.size());
     SetNVals(maxNTracks);
@@ -1430,6 +1430,13 @@ public:
     const int range = static_cast<int>(pFirstParam->GetRange() / pFirstParam->GetStep());
     mZeroValueStepHasBounds = !(range == 1);
     SetNSteps(pFirstParam->GetStepped() ? range : 0); // calls OnResize()
+  }
+  
+  void SetNTracks(int nTracks)
+  {
+    SetNVals(nTracks);
+    mTrackBounds.Resize(nTracks);
+    OnResize();
   }
   
   void SetBaseValue(double value)
@@ -1724,7 +1731,7 @@ public:
   /** Creates an IDirBrowseControlBase
    * @param bounds The control's bounds
    * @param extension The file extenstion to browse for, e.g excluding the dot e.g. "txt"
-   * @param showFileExtension Should the meu show the file extension */
+   * @param showFileExtension Should the menu show the file extension */
   IDirBrowseControlBase(const IRECT& bounds, const char* extension, bool showFileExtensions = true)
   : IControl(bounds)
   , mShowFileExtensions(showFileExtensions)
@@ -1916,8 +1923,8 @@ class ISVGControl : public IControl
 public:
   ISVGControl(const IRECT& bounds, const ISVG& svg, bool useLayer = false)
   : IControl(bounds)
-  , mSVG(svg)
   , mUseLayer(useLayer)
+  , mSVG(svg)
   {}
 
   virtual ~ISVGControl() {}
@@ -2004,7 +2011,7 @@ public:
   }
 };
 
-/** A control to show a clickable URL, that changes colour after clicking */
+/** A control to show a clickable URL, that changes color after clicking */
 class IURLControl : public ITextControl
 {
 public:
@@ -2015,7 +2022,14 @@ public:
   void OnMouseDown(float x, float y, const IMouseMod& mod) override;
   void OnMouseOver(float x, float y, const IMouseMod& mod) override { GetUI()->SetMouseCursor(ECursor::HAND); IControl::OnMouseOver(x, y, mod); };
   void OnMouseOut() override { GetUI()->SetMouseCursor(); IControl::OnMouseOut(); }
+  void SetText(const IText&) override;
 
+  /** Sets the color of the text on Mouse Over */
+  void SetMOColor(const IColor& color) { mMOColor = color; SetDirty(false); }
+  
+  /** Sets the color of the text when the URL has been clicked */
+  void SetCLColor(const IColor& color) { mCLColor = color; SetDirty(false); }
+  
 protected:
   WDL_String mURLStr;
   IColor mOriginalColor, mMOColor, mCLColor;

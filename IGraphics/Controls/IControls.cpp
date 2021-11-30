@@ -169,16 +169,16 @@ void IVSwitchControl::OnInit()
 
 IVToggleControl::IVToggleControl(const IRECT& bounds, int paramIdx, const char* label, const IVStyle& style, const char* offText, const char* onText)
 : IVSwitchControl(bounds, paramIdx, label, style, true)
-, mOnText(onText)
 , mOffText(offText)
+, mOnText(onText)
 {
   //TODO: assert boolean?
 }
 
 IVToggleControl::IVToggleControl(const IRECT& bounds, IActionFunction aF, const char* label, const IVStyle& style, const char* offText, const char* onText, bool initialState)
 : IVSwitchControl(bounds, aF, label, style, 2, true)
-, mOnText(onText)
 , mOffText(offText)
+, mOnText(onText)
 {
   SetValue((double) initialState);
 }
@@ -1232,9 +1232,9 @@ IVColorSwatchControl::IVColorSwatchControl(const IRECT& bounds, const char* labe
   const std::initializer_list<EVColor>& colorIDs, const std::initializer_list<const char*>& labelsForIDs)
 : IControl(bounds)
 , IVectorBase(style)
+, mColorChosenFunc(func)
 , mLayout(layout)
 , mColorIdForCells(colorIDs)
-, mColorChosenFunc(func)
 {
   assert(colorIDs.size() == labelsForIDs.size());
   

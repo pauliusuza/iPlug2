@@ -1342,6 +1342,8 @@ void EEL_Editor::doWatchInfo(int c)
 
         if (c==KEY_F1)
         {
+          if (m_suggestion.GetLength())
+            goto help_from_sug;
           on_help(n.Get(),0);
           return;
         }
@@ -1353,7 +1355,16 @@ void EEL_Editor::doWatchInfo(int c)
   }
   if (c==KEY_F1)
   {
-    on_help(NULL,(int)curChar);
+help_from_sug:
+    WDL_FastString t;
+    if (m_suggestion.GetLength())
+    {
+      const char *p = m_suggestion.Get();
+      int l;
+      for (l = 0; isalnum(p[l]) || p[l] == '_' || p[l] == '.'; l ++);
+      if (l>0) t.Set(m_suggestion.Get(),l);
+    }
+    on_help(t.GetLength() > 2 ? t.Get() : NULL,(int)curChar);
     return;
   }
 
@@ -2033,8 +2044,8 @@ LRESULT EEL_Editor::onMouseMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
           }
         }
 
-        // doubleclicking a function goes to it
-        if (!SHIFT_KEY_DOWN)
+        // ctrl+doubleclicking a function goes to it
+        if (CTRL_KEY_DOWN)
         {
           WDL_FastString *l=m_text.Get(m_curs_y);
           if (l)
