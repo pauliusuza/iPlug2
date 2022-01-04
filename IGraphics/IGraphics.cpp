@@ -2485,53 +2485,53 @@ void IGraphics::AttachImGui(std::function<void(IGraphics*)> drawFunc, std::funct
     PathStroke(color, thickness, options, pBlend);
   }
   
-  void IGraphics::DrawTriangle(const IColor& color, float x1, float y1, float x2, float y2, float x3, float y3, const IBlend* pBlend, float thickness)
+  void IGraphics::DrawTriangle(const IColor& color, float x1, float y1, float x2, float y2, float x3, float y3, const IBlend* pBlend, float thickness, IStrokeOptions options)
   {
     PathClear();
     PathTriangle(x1, y1, x2, y2, x3, y3);
-    PathStroke(color, thickness, IStrokeOptions(), pBlend);
+    PathStroke(color, thickness, options, pBlend);
   }
   
-  void IGraphics::DrawRect(const IColor& color, const IRECT& bounds, const IBlend* pBlend, float thickness)
+  void IGraphics::DrawRect(const IColor& color, const IRECT& bounds, const IBlend* pBlend, float thickness, IStrokeOptions options)
   {
     PathClear();
     PathRect(bounds);
-    PathStroke(color, thickness, IStrokeOptions(), pBlend);
+    PathStroke(color, thickness, options, pBlend);
   }
   
-  void IGraphics::DrawRoundRect(const IColor& color, const IRECT& bounds, float cornerRadius, const IBlend* pBlend, float thickness)
+  void IGraphics::DrawRoundRect(const IColor& color, const IRECT& bounds, float cornerRadius, const IBlend* pBlend, float thickness, IStrokeOptions options)
   {
     PathClear();
     PathRoundRect(bounds, cornerRadius);
-    PathStroke(color, thickness, IStrokeOptions(), pBlend);
+    PathStroke(color, thickness, options, pBlend);
   }
   
-  void IGraphics::DrawRoundRect(const IColor& color, const IRECT& bounds, float cRTL, float cRTR, float cRBR, float cRBL, const IBlend* pBlend, float thickness)
+  void IGraphics::DrawRoundRect(const IColor& color, const IRECT& bounds, float cRTL, float cRTR, float cRBR, float cRBL, const IBlend* pBlend, float thickness, IStrokeOptions options)
   {
     PathClear();
     PathRoundRect(bounds, cRTL, cRTR, cRBR, cRBL);
-    PathStroke(color, thickness, IStrokeOptions(), pBlend);
+    PathStroke(color, thickness, options, pBlend);
   }
   
-  void IGraphics::DrawConvexPolygon(const IColor& color, float* x, float* y, int nPoints, const IBlend* pBlend, float thickness)
+  void IGraphics::DrawConvexPolygon(const IColor& color, float* x, float* y, int nPoints, const IBlend* pBlend, float thickness, IStrokeOptions options)
   {
     PathClear();
     PathConvexPolygon(x, y, nPoints);
-    PathStroke(color, thickness, IStrokeOptions(), pBlend);
+    PathStroke(color, thickness, options, pBlend);
   }
   
-  void IGraphics::DrawArc(const IColor& color, float cx, float cy, float r, float a1, float a2, const IBlend* pBlend, float thickness)
+  void IGraphics::DrawArc(const IColor& color, float cx, float cy, float r, float a1, float a2, const IBlend* pBlend, float thickness, IStrokeOptions options)
   {
     PathClear();
     PathArc(cx, cy, r, a1, a2);
-    PathStroke(color, thickness, IStrokeOptions(), pBlend);
+    PathStroke(color, thickness, options, pBlend);
   }
   
-  void IGraphics::DrawCircle(const IColor& color, float cx, float cy, float r, const IBlend* pBlend, float thickness)
+  void IGraphics::DrawCircle(const IColor& color, float cx, float cy, float r, const IBlend* pBlend, float thickness, IStrokeOptions options)
   {
     PathClear();
     PathCircle(cx, cy, r);
-    PathStroke(color, thickness, IStrokeOptions(), pBlend);
+    PathStroke(color, thickness, options, pBlend);
   }
   
   void IGraphics::DrawDottedRect(const IColor& color, const IRECT& bounds, const IBlend* pBlend, float thickness, float dashLen)
@@ -2543,18 +2543,18 @@ void IGraphics::AttachImGui(std::function<void(IGraphics*)> drawFunc, std::funct
     PathStroke(color, thickness, options, pBlend);
   }
   
-  void IGraphics::DrawEllipse(const IColor& color, const IRECT& bounds, const IBlend* pBlend, float thickness)
+  void IGraphics::DrawEllipse(const IColor& color, const IRECT& bounds, const IBlend* pBlend, float thickness, IStrokeOptions options)
   {
     PathClear();
     PathEllipse(bounds);
-    PathStroke(color, thickness, IStrokeOptions(), pBlend);
+    PathStroke(color, thickness, options, pBlend);
   }
   
-  void IGraphics::DrawEllipse(const IColor& color, float x, float y, float r1, float r2, float angle, const IBlend* pBlend, float thickness)
+  void IGraphics::DrawEllipse(const IColor& color, float x, float y, float r1, float r2, float angle, const IBlend* pBlend, float thickness, IStrokeOptions options)
   {
     PathClear();
     PathEllipse(x, y, r1, r2, angle);
-    PathStroke(color, thickness, IStrokeOptions(), pBlend);
+    PathStroke(color, thickness, options, pBlend);
   }
 
   void IGraphics::FillTriangle(const IColor& color, float x1, float y1, float x2, float y2, float x3, float y3, const IBlend* pBlend)
@@ -2786,7 +2786,16 @@ void IGraphics::AttachImGui(std::function<void(IGraphics*)> drawFunc, std::funct
     float scale = xScale < yScale ? xScale : yScale;
     
     PathTransformSave();
-    PathTransformTranslate(dest.L, dest.T);
+    
+    double left = dest.L;
+    double top = dest.T;
+    if (svg.W() * scale < dest.W()) {
+      left += (dest.W() * 0.5) - (svg.W() * scale * 0.5);
+    }
+    if(svg.H() * scale < dest.H()) {
+      top += (dest.H() * 0.5) + (svg.H()* scale * 0.5);
+    }
+    PathTransformTranslate(left, top);
     PathTransformScale(scale);
     DoDrawSVG(svg, pBlend);
     PathTransformRestore();

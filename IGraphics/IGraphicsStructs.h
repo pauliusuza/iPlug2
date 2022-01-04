@@ -2512,6 +2512,9 @@ struct IVStyle
   float trackZeroValue = DEFAULT_TRACK_ZERO_VALUE;
   float knobMinAngle = DEFAULT_KNOB_MIN_ANGLE;
   float knobMaxAngle = DEFAULT_KNOB_MAX_ANGLE;
+  IStrokeOptions trackPathOptions = IStrokeOptions();
+  IStrokeOptions indicatorPathOptions = IStrokeOptions();
+  IStrokeOptions framePathOptions = IStrokeOptions();
   IVColorSpec colorSpec = DEFAULT_COLOR_SPEC;
   IText labelText = DEFAULT_LABEL_TEXT;
   IText valueText = DEFAULT_VALUE_TEXT;
@@ -2552,7 +2555,11 @@ struct IVStyle
           float trackBackgroundSize = DEFAULT_TRACK_BACKGROUND_SIZE,
           float trackZeroValue = DEFAULT_TRACK_ZERO_VALUE,
           float knobMinAngle = DEFAULT_KNOB_MIN_ANGLE,
-          float knobMaxAngle = DEFAULT_KNOB_MAX_ANGLE)
+          float knobMaxAngle = DEFAULT_KNOB_MAX_ANGLE,
+          const IStrokeOptions& trackPathOptions = IStrokeOptions(),
+          const IStrokeOptions& indicatorPathOptions = IStrokeOptions(),
+          const IStrokeOptions& framePathOptions = IStrokeOptions()
+          )
   : showLabel(showLabel)
   , showValue(showValue)
   , colorSpec(colors)
@@ -2575,6 +2582,9 @@ struct IVStyle
   , trackZeroValue(trackZeroValue)
   , knobMinAngle(knobMinAngle)
   , knobMaxAngle(knobMaxAngle)
+  , trackPathOptions(trackPathOptions)
+  , indicatorPathOptions(indicatorPathOptions)
+  , framePathOptions(framePathOptions)
   {
   }
   
@@ -2612,6 +2622,9 @@ struct IVStyle
   IVStyle WithTrackZeroValue(float v) const { IVStyle newStyle = *this; newStyle.trackZeroValue = v; return newStyle; }
   IVStyle WithKnobMinAngle(float v) const { IVStyle newStyle = *this; newStyle.knobMinAngle = v; return newStyle; }
   IVStyle WithKnobMaxAngle(float v) const { IVStyle newStyle = *this; newStyle.knobMaxAngle = v; return newStyle; }
+  IVStyle WithTrackPathOptions(IStrokeOptions v) const { IVStyle newStyle = *this; newStyle.trackPathOptions = v; return newStyle; }
+  IVStyle WithIndicatorPathOptions(IStrokeOptions v) const { IVStyle newStyle = *this; newStyle.indicatorPathOptions = v; return newStyle; }
+  IVStyle WithFramePathOptions(IStrokeOptions v) const { IVStyle newStyle = *this; newStyle.framePathOptions = v; return newStyle; }
 };
 
 const IVStyle DEFAULT_STYLE = IVStyle();

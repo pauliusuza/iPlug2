@@ -598,12 +598,12 @@ void IVKnobControl::DrawIndicatorTrack(IGraphics& g, float angle, float cx, floa
 {
   if (mStyle.trackBackgroundSize > 0.f)
   {
-    g.DrawArc(GetColor(kX3), cx, cy, radius, mAngle1, mAngle2, &mBlend, mStyle.trackBackgroundSize);
+    g.DrawArc(GetColor(kX3), cx, cy, radius, mAngle1, mAngle2, &mBlend, mStyle.trackBackgroundSize, mStyle.trackPathOptions);
   }
   
   if (mStyle.trackSize > 0.f)
   {
-    g.DrawArc(GetColor(kX1), cx, cy, radius, angle >= mAnchorAngle ? mAnchorAngle : mAnchorAngle - (mAnchorAngle - angle), angle >= mAnchorAngle ? angle : mAnchorAngle, &mBlend, mStyle.trackSize);
+    g.DrawArc(GetColor(kX1), cx, cy, radius, angle >= mAnchorAngle ? mAnchorAngle : mAnchorAngle - (mAnchorAngle - angle), angle >= mAnchorAngle ? angle : mAnchorAngle, &mBlend, mStyle.trackSize, mStyle.trackPathOptions);
   }
 }
 
