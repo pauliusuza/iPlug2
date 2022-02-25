@@ -761,11 +761,11 @@ void IGraphics::DrawHorizontalLine(const IColor& color, float yi, float xLo, flo
   DrawLine(color, xLo, yi, xHi, yi, pBlend, thickness);
 }
 
-void IGraphics::DrawRadialLine(const IColor& color, float cx, float cy, float angle, float rMin, float rMax, const IBlend* pBlend, float thickness)
+void IGraphics::DrawRadialLine(const IColor& color, float cx, float cy, float angle, float rMin, float rMax, const IBlend* pBlend, float thickness, IStrokeOptions options)
 {
   float data[2][2];
   RadialPoints(angle, cx, cy, rMin, rMax, 2, data);
-  DrawLine(color, data[0][0], data[0][1], data[1][0], data[1][1], pBlend, thickness);
+  DrawLine(color, data[0][0], data[0][1], data[1][0], data[1][1], pBlend, thickness, options);
 }
 
 void IGraphics::PathRadialLine(float cx, float cy, float angle, float rMin, float rMax)
@@ -1987,6 +1987,7 @@ void IGraphics::ApplyLayerDropShadow(ILayerPtr& layer, const IShadow& shadow)
   auto GaussianBlurSwap = [](uint8_t* out, uint8_t* in, uint8_t* kernel, int width, int height,
                              int outStride, int inStride, int kernelSize, uint32_t norm)
   {
+    
     int repeats = 0;
     int fullKernelSize = kernelSize * 2 + 1;
     uint32_t last = 0;
@@ -2323,12 +2324,12 @@ void IGraphics::DrawPoint(const IColor& color, float x, float y, const IBlend* p
   FillRect(color, IRECT(x, y, x+1.f, y+1.f), pBlend);
 }
 
-void IGraphics::DrawLine(const IColor& color, float x1, float y1, float x2, float y2, const IBlend* pBlend, float thickness)
+void IGraphics::DrawLine(const IColor& color, float x1, float y1, float x2, float y2, const IBlend* pBlend, float thickness, IStrokeOptions options)
 {
   PathClear();
   PathMoveTo(x1, y1);
   PathLineTo(x2, y2);
-  PathStroke(color, thickness, IStrokeOptions(), pBlend);
+  PathStroke(color, thickness, options, pBlend);
 }
 
 void IGraphics::DrawGrid(const IColor& color, const IRECT& bounds, float gridSizeH, float gridSizeV, const IBlend* pBlend, float thickness)

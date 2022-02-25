@@ -152,7 +152,7 @@ public:
    * @param y2 The Y coordinate of the end of the line
    * @param pBlend Optional blend method
    * @param thickness Optional line thickness */
-  virtual void DrawLine(const IColor& color, float x1, float y1, float x2, float y2, const IBlend* pBlend = 0, float thickness = 1.f);
+  virtual void DrawLine(const IColor& color, float x1, float y1, float x2, float y2, const IBlend* pBlend = 0, float thickness = 1.f, IStrokeOptions options = IStrokeOptions());
 
   /** Draw a dotted line to the graphics context
    * @param color The color to draw the shape with
@@ -466,7 +466,7 @@ public:
    * @param rMax maxima of the radial line (distance from cx,cy)
    * @param pBlend Optional blend method
    * @param thickness Optional line thickness */
-  void DrawRadialLine(const IColor& color, float cx, float cy, float angle, float rMin, float rMax, const IBlend* pBlend = 0, float thickness = 1.f);
+  void DrawRadialLine(const IColor& color, float cx, float cy, float angle, float rMin, float rMax, const IBlend* pBlend = 0, float thickness = 1.f, IStrokeOptions options = IStrokeOptions());
 
   /** Draw a grid to the graphics context
    * @param color The color to draw the grid lines with
