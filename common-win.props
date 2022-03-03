@@ -61,7 +61,7 @@
     <VST2_64_COMMAND_ARGS>$(SolutionDir)$(SolutionName).RPP</VST2_64_COMMAND_ARGS>
     <VST3_64_COMMAND_ARGS>$(SolutionDir)$(SolutionName).RPP</VST3_64_COMMAND_ARGS>
     <VST3_32_COMMAND_ARGS>$(SolutionDir)$(SolutionName).RPP</VST3_32_COMMAND_ARGS>
-    <COPY_VST2>1</COPY_VST2>
+    <COPY_VST2>0</COPY_VST2>
     <REAPER_INC_PATHS>$(IPLUG_DEPS_PATH)/Reaper;$(IPLUG_PATH)\ReaperExt;</REAPER_INC_PATHS>
     <AAX_ICON>$(AAX_SDK)\Utilities\PlugIn.ico</AAX_ICON>
     <VST_ICON>$(VST3_SDK)\doc\artwork\VST_Logo_Steinberg.ico</VST_ICON>
@@ -75,7 +75,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PreprocessorDefinitions>$(ALL_DEFS);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4996;4250;4018;4267;4068;</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>$(WDL_PATH);$(IPLUG_PATH);$(SolutionDir);%(AdditionalIncludeDirectories);$(ProjectDir)..\..\HoRNetGUIComponents\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(WDL_PATH);$(IPLUG_PATH);$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
