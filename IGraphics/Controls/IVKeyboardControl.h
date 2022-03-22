@@ -348,16 +348,16 @@ public:
       }
     }
 
-#ifdef _DEBUG
-    //g.DrawRect(COLOR_GREEN, mTargetRECT);
-    //g.DrawRect(COLOR_BLUE, mRECT);
-    WDL_String ti;
-    ti.SetFormatted(32, "key: %d, vel: %3.2f", mLastTouchedKey, mLastVelocity * 127.f);
-    //ti.SetFormatted(16, "mBAlpha: %d", mBAlpha);
-    IText txt(20, COLOR_RED);
-    IRECT tr(mRECT.L + 20, mRECT.B - 20, mRECT.L + 160, mRECT.B);
-    g.DrawText(txt, ti.Get(), tr, &mBlend);
-#endif
+//#ifdef _DEBUG
+//    //g.DrawRect(COLOR_GREEN, mTargetRECT);
+//    //g.DrawRect(COLOR_BLUE, mRECT);
+//    WDL_String ti;
+//    ti.SetFormatted(32, "key: %d, vel: %3.2f", mLastTouchedKey, mLastVelocity * 127.f);
+//    //ti.SetFormatted(16, "mBAlpha: %d", mBAlpha);
+//    IText txt(20, COLOR_RED);
+//    IRECT tr(mRECT.L + 20, mRECT.B - 20, mRECT.L + 160, mRECT.B);
+//    g.DrawText(txt, ti.Get(), tr, &mBlend);
+//#endif
   }
 
 #pragma mark -

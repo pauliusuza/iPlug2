@@ -290,7 +290,7 @@ void IParam::GetDisplay(double value, bool normalized, WDL_String& str, bool wit
 
   if (mDisplayPrecision == 0)
   {
-    str.SetFormatted(MAX_PARAM_DISPLAY_LEN, "%d", static_cast<int>(round(displayValue)));
+    str.SetFormatted(MAX_PARAM_DISPLAY_LEN, "%d", static_cast<int>(displayValue));
   }
   else if ((mFlags & kFlagSignDisplay) && displayValue)
   {

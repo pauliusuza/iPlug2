@@ -1425,7 +1425,9 @@ IBitmap IGraphics::GetScaledBitmap(IBitmap& src)
 void IGraphics::EnableTooltips(bool enable)
 {
   mEnableTooltips = enable;
-  if (enable) mEnableMouseOver = true;
+  UpdateTooltips();
+  if (enable) 
+    mEnableMouseOver = true;
 }
 
 void IGraphics::EnableLiveEdit(bool enable)
@@ -1856,6 +1858,14 @@ void IGraphics::DoCreatePopupMenu(IControl& control, IPopupMenu& menu, const IRE
     
     if(!isAsync)
       SetControlValueAfterPopupMenu(pReturnMenu);
+  }
+  
+  int nVals = control.NVals();
+  
+  for (int v = 0; v < nVals; v++)
+  {
+    if (control.GetParamIdx(v) > kNoParameter)
+      GetDelegate()->EndInformHostOfParamChangeFromUI(control.GetParamIdx(v));
   }
 }
 
@@ -2357,101 +2367,101 @@ void IGraphics::DrawData(const IColor& color, const IRECT& bounds, float* normYP
 
   PathMoveTo(xPos, bounds.B - (bounds.H() * normYPoints[0]));
 
-  for (auto i = 1; i < nPoints; i++)
-  {
-    if(normXPoints)
-      xPos = bounds.L + (bounds.W() * normXPoints[i]);
-    else
-      xPos = bounds.L + ((bounds.W() / (float) (nPoints - 1) * i));
+    for (auto i = 1; i < nPoints; i++)
+    {
+      if(normXPoints)
+        xPos = bounds.L + (bounds.W() * normXPoints[i]);
+      else
+        xPos = bounds.L + ((bounds.W() / (float) (nPoints - 1) * i));
+      
+      PathLineTo(xPos, bounds.B - (bounds.H() * normYPoints[i]));
+    }
     
-    PathLineTo(xPos, bounds.B - (bounds.H() * normYPoints[i]));
+    PathStroke(color, thickness, IStrokeOptions(), pBlend);
   }
   
-  PathStroke(color, thickness, IStrokeOptions(), pBlend);
-}
-
-void IGraphics::DrawDottedLine(const IColor& color, float x1, float y1, float x2, float y2, const IBlend* pBlend, float thickness, float dashLen)
-{
-  PathClear();
+  void IGraphics::DrawDottedLine(const IColor& color, float x1, float y1, float x2, float y2, const IBlend* pBlend, float thickness, float dashLen)
+  {
+    PathClear();
+    
+    IStrokeOptions options;
+    options.mDash.SetDash(&dashLen, 0.0, 1);
+    PathMoveTo(x1, y1);
+    PathLineTo(x2, y2);
+    PathStroke(color, thickness, options, pBlend);
+  }
   
-  IStrokeOptions options;
-  options.mDash.SetDash(&dashLen, 0.0, 1);
-  PathMoveTo(x1, y1);
-  PathLineTo(x2, y2);
-  PathStroke(color, thickness, options, pBlend);
-}
-
-void IGraphics::DrawTriangle(const IColor& color, float x1, float y1, float x2, float y2, float x3, float y3, const IBlend* pBlend, float thickness)
-{
-  PathClear();
-  PathTriangle(x1, y1, x2, y2, x3, y3);
-  PathStroke(color, thickness, IStrokeOptions(), pBlend);
-}
-
-void IGraphics::DrawRect(const IColor& color, const IRECT& bounds, const IBlend* pBlend, float thickness)
-{
-  PathClear();
-  PathRect(bounds);
-  PathStroke(color, thickness, IStrokeOptions(), pBlend);
-}
-
-void IGraphics::DrawRoundRect(const IColor& color, const IRECT& bounds, float cornerRadius, const IBlend* pBlend, float thickness)
-{
-  PathClear();
-  PathRoundRect(bounds, cornerRadius);
-  PathStroke(color, thickness, IStrokeOptions(), pBlend);
-}
-
-void IGraphics::DrawRoundRect(const IColor& color, const IRECT& bounds, float cRTL, float cRTR, float cRBR, float cRBL, const IBlend* pBlend, float thickness)
-{
-  PathClear();
-  PathRoundRect(bounds, cRTL, cRTR, cRBR, cRBL);
-  PathStroke(color, thickness, IStrokeOptions(), pBlend);
-}
-
-void IGraphics::DrawConvexPolygon(const IColor& color, float* x, float* y, int nPoints, const IBlend* pBlend, float thickness)
-{
-  PathClear();
-  PathConvexPolygon(x, y, nPoints);
-  PathStroke(color, thickness, IStrokeOptions(), pBlend);
-}
-
-void IGraphics::DrawArc(const IColor& color, float cx, float cy, float r, float a1, float a2, const IBlend* pBlend, float thickness)
-{
-  PathClear();
-  PathArc(cx, cy, r, a1, a2);
-  PathStroke(color, thickness, IStrokeOptions(), pBlend);
-}
-
-void IGraphics::DrawCircle(const IColor& color, float cx, float cy, float r, const IBlend* pBlend, float thickness)
-{
-  PathClear();
-  PathCircle(cx, cy, r);
-  PathStroke(color, thickness, IStrokeOptions(), pBlend);
-}
-
-void IGraphics::DrawDottedRect(const IColor& color, const IRECT& bounds, const IBlend* pBlend, float thickness, float dashLen)
-{
-  PathClear();
-  IStrokeOptions options;
-  options.mDash.SetDash(&dashLen, 0., 1);
-  PathRect(bounds);
-  PathStroke(color, thickness, options, pBlend);
-}
-
-void IGraphics::DrawEllipse(const IColor& color, const IRECT& bounds, const IBlend* pBlend, float thickness)
-{
-  PathClear();
-  PathEllipse(bounds);
-  PathStroke(color, thickness, IStrokeOptions(), pBlend);
-}
-
-void IGraphics::DrawEllipse(const IColor& color, float x, float y, float r1, float r2, float angle, const IBlend* pBlend, float thickness)
-{
-  PathClear();
-  PathEllipse(x, y, r1, r2, angle);
-  PathStroke(color, thickness, IStrokeOptions(), pBlend);
-}
+  void IGraphics::DrawTriangle(const IColor& color, float x1, float y1, float x2, float y2, float x3, float y3, const IBlend* pBlend, float thickness, IStrokeOptions options)
+  {
+    PathClear();
+    PathTriangle(x1, y1, x2, y2, x3, y3);
+    PathStroke(color, thickness, options, pBlend);
+  }
+  
+  void IGraphics::DrawRect(const IColor& color, const IRECT& bounds, const IBlend* pBlend, float thickness, IStrokeOptions options)
+  {
+    PathClear();
+    PathRect(bounds);
+    PathStroke(color, thickness, options, pBlend);
+  }
+  
+  void IGraphics::DrawRoundRect(const IColor& color, const IRECT& bounds, float cornerRadius, const IBlend* pBlend, float thickness, IStrokeOptions options)
+  {
+    PathClear();
+    PathRoundRect(bounds, cornerRadius);
+    PathStroke(color, thickness, options, pBlend);
+  }
+  
+  void IGraphics::DrawRoundRect(const IColor& color, const IRECT& bounds, float cRTL, float cRTR, float cRBR, float cRBL, const IBlend* pBlend, float thickness, IStrokeOptions options)
+  {
+    PathClear();
+    PathRoundRect(bounds, cRTL, cRTR, cRBR, cRBL);
+    PathStroke(color, thickness, options, pBlend);
+  }
+  
+  void IGraphics::DrawConvexPolygon(const IColor& color, float* x, float* y, int nPoints, const IBlend* pBlend, float thickness, IStrokeOptions options)
+  {
+    PathClear();
+    PathConvexPolygon(x, y, nPoints);
+    PathStroke(color, thickness, options, pBlend);
+  }
+  
+  void IGraphics::DrawArc(const IColor& color, float cx, float cy, float r, float a1, float a2, const IBlend* pBlend, float thickness, IStrokeOptions options)
+  {
+    PathClear();
+    PathArc(cx, cy, r, a1, a2);
+    PathStroke(color, thickness, options, pBlend);
+  }
+  
+  void IGraphics::DrawCircle(const IColor& color, float cx, float cy, float r, const IBlend* pBlend, float thickness, IStrokeOptions options)
+  {
+    PathClear();
+    PathCircle(cx, cy, r);
+    PathStroke(color, thickness, options, pBlend);
+  }
+  
+  void IGraphics::DrawDottedRect(const IColor& color, const IRECT& bounds, const IBlend* pBlend, float thickness, float dashLen)
+  {
+    PathClear();
+    IStrokeOptions options;
+    options.mDash.SetDash(&dashLen, 0., 1);
+    PathRect(bounds);
+    PathStroke(color, thickness, options, pBlend);
+  }
+  
+  void IGraphics::DrawEllipse(const IColor& color, const IRECT& bounds, const IBlend* pBlend, float thickness, IStrokeOptions options)
+  {
+    PathClear();
+    PathEllipse(bounds);
+    PathStroke(color, thickness, options, pBlend);
+  }
+  
+  void IGraphics::DrawEllipse(const IColor& color, float x, float y, float r1, float r2, float angle, const IBlend* pBlend, float thickness, IStrokeOptions options)
+  {
+    PathClear();
+    PathEllipse(x, y, r1, r2, angle);
+    PathStroke(color, thickness, options, pBlend);
+  }
 
 void IGraphics::FillTriangle(const IColor& color, float x1, float y1, float x2, float y2, float x3, float y3, const IBlend* pBlend)
 {
@@ -2656,46 +2666,55 @@ void IGraphics::PathTransformMatrix(const IMatrix& matrix)
   PathTransformSetMatrix(mTransform);
 }
 
-void IGraphics::PathClipRegion(const IRECT r)
-{
-  IRECT drawArea = mLayers.empty() ? mClipRECT : mLayers.top()->Bounds();
-  IRECT clip = r.Empty() ? drawArea : r.Intersect(drawArea);
-  PathTransformSetMatrix(IMatrix());
-  SetClipRegion(clip);
-  PathTransformSetMatrix(mTransform);
-}
-
-void IGraphics::DrawFittedBitmap(const IBitmap& bitmap, const IRECT& bounds, const IBlend* pBlend)
-{
-  PathTransformSave();
-  PathTransformTranslate(bounds.L, bounds.T);
-  IRECT newBounds(0., 0., static_cast<float>(bitmap.W()), static_cast<float>(bitmap.H()));
-  PathTransformScale(bounds.W() / static_cast<float>(bitmap.W()), bounds.H() / static_cast<float>(bitmap.H()));
-  DrawBitmap(bitmap, newBounds, 0, 0, pBlend);
-  PathTransformRestore();
-}
-
-void IGraphics::DrawSVG(const ISVG& svg, const IRECT& dest, const IBlend* pBlend)
-{
-  float xScale = dest.W() / svg.W();
-  float yScale = dest.H() / svg.H();
-  float scale = xScale < yScale ? xScale : yScale;
+  void IGraphics::PathClipRegion(const IRECT r)
+  {
+    IRECT drawArea = mLayers.empty() ? mClipRECT : mLayers.top()->Bounds();
+    IRECT clip = r.Empty() ? drawArea : r.Intersect(drawArea);
+    PathTransformSetMatrix(IMatrix());
+    SetClipRegion(clip);
+    PathTransformSetMatrix(mTransform);
+  }
   
-  PathTransformSave();
-  PathTransformTranslate(dest.L, dest.T);
-  PathTransformScale(scale);
-  DoDrawSVG(svg, pBlend);
-  PathTransformRestore();
-}
-
-void IGraphics::DrawRotatedSVG(const ISVG& svg, float destCtrX, float destCtrY, float width, float height, double angle, const IBlend* pBlend)
-{
-  PathTransformSave();
-  PathTransformTranslate(destCtrX, destCtrY);
-  PathTransformRotate((float) angle);
-  DrawSVG(svg, IRECT(-width * 0.5f, - height * 0.5f, width * 0.5f, height * 0.5f), pBlend);
-  PathTransformRestore();
-}
+  void IGraphics::DrawFittedBitmap(const IBitmap& bitmap, const IRECT& bounds, const IBlend* pBlend)
+  {
+    PathTransformSave();
+    PathTransformTranslate(bounds.L, bounds.T);
+    IRECT newBounds(0., 0., static_cast<float>(bitmap.W()), static_cast<float>(bitmap.H()));
+    PathTransformScale(bounds.W() / static_cast<float>(bitmap.W()), bounds.H() / static_cast<float>(bitmap.H()));
+    DrawBitmap(bitmap, newBounds, 0, 0, pBlend);
+    PathTransformRestore();
+  }
+  
+  void IGraphics::DrawSVG(const ISVG& svg, const IRECT& dest, const IBlend* pBlend)
+  {
+    float xScale = dest.W() / svg.W();
+    float yScale = dest.H() / svg.H();
+    float scale = xScale < yScale ? xScale : yScale;
+    
+    PathTransformSave();
+    
+    double left = dest.L;
+    double top = dest.T;
+    if (svg.W() * scale < dest.W()) {
+      left += (dest.W() * 0.5) - (svg.W() * scale * 0.5);
+    }
+    if(svg.H() * scale < dest.H()) {
+      top += (dest.H() * 0.5) + (svg.H()* scale * 0.5);
+    }
+    PathTransformTranslate(left, top);
+    PathTransformScale(scale);
+    DoDrawSVG(svg, pBlend);
+    PathTransformRestore();
+  }
+  
+  void IGraphics::DrawRotatedSVG(const ISVG& svg, float destCtrX, float destCtrY, float width, float height, double angle, const IBlend* pBlend)
+  {
+    PathTransformSave();
+    PathTransformTranslate(destCtrX, destCtrY);
+    PathTransformRotate((float) angle);
+    DrawSVG(svg, IRECT(-width * 0.5f, - height * 0.5f, width * 0.5f, height * 0.5f), pBlend);
+    PathTransformRestore();
+  }
 
 IPattern IGraphics::GetSVGPattern(const NSVGpaint& paint, float opacity)
 {
