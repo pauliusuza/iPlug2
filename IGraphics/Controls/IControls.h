@@ -152,7 +152,7 @@ public:
   
   virtual ~IVTabSwitchControl() { mTabLabels.Empty(true); }
   void Draw(IGraphics& g) override;
-  void OnInit() override;
+  virtual void OnInit() override;
 
   virtual void DrawWidget(IGraphics& g) override;
   virtual void DrawButton(IGraphics& g, const IRECT& bounds, bool pressed, bool mouseOver, ETabSegment segment, bool disabled);

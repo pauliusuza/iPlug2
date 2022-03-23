@@ -609,7 +609,7 @@ void IVKnobControl::DrawIndicatorTrack(IGraphics& g, float angle, float cx, floa
 
 void IVKnobControl::DrawPointer(IGraphics& g, float angle, float cx, float cy, float radius)
 {
-  g.DrawRadialLine(GetColor(kX2), cx, cy, angle, mStyle.innerPointerFrac * radius, mStyle.outerPointerFrac * radius, &mBlend, mStyle.pointerThickness);
+  g.DrawRadialLine(GetColor(kX2), cx, cy, angle, mStyle.innerPointerFrac * radius, mStyle.outerPointerFrac * radius, &mBlend, mStyle.pointerThickness, mStyle.indicatorPathOptions);
 }
 
 void IVKnobControl::OnMouseDown(float x, float y, const IMouseMod& mod)
