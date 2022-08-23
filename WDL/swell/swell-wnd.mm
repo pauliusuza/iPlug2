@@ -1490,6 +1490,15 @@ LONG_PTR GetWindowLong(HWND hwnd, int idx)
   }
   if (idx==GWL_USERDATA && [pid isKindOfClass:[NSText class]])
   {
+    NSView *par = [pid superview];
+    if (par)
+    {
+      if (![par isKindOfClass:[SWELL_TextField class]])
+        par = [par superview];
+      if ([par isKindOfClass:[SWELL_TextField class]])
+        return [(SWELL_TextField*)par getSwellUserData];
+    }
+
     return 0xdeadf00b;
   }
   
@@ -1517,7 +1526,8 @@ LONG_PTR GetWindowLong(HWND hwnd, int idx)
     if ([pid isKindOfClass:[NSButton class]]) 
     {
       int tmp;
-      if ([pid allowsMixedState]) ret |= BS_AUTO3STATE;
+      if ([pid isKindOfClass:[NSPopUpButton class]]) ret |= CBS_DROPDOWNLIST;
+      else if ([pid allowsMixedState]) ret |= BS_AUTO3STATE;
       else if ([pid isKindOfClass:[SWELL_Button class]] && (tmp = (int)[pid swellGetRadioFlags]))
       {
         ret |= BS_AUTORADIOBUTTON;
@@ -1857,7 +1867,7 @@ void DestroyWindow(HWND hwnd)
   {
     KillTimer(hwnd,~(UINT_PTR)0);
     sendSwellMessage((id)pid,WM_DESTROY,0,0);
-      
+
     NSWindow *pw = [(NSView *)pid window];
     if (pw && [pw contentView] == pid) // destroying contentview should destroy top level window
     {
@@ -1904,6 +1914,15 @@ void EnableWindow(HWND hwnd, int enable)
     
   if (bla && [bla respondsToSelector:@selector(setEnabled:)])
   {
+    if (!enable)
+    {
+      HWND foc = GetFocus();
+      if (foc && (foc==hwnd || IsChild(hwnd,foc)))
+      {
+        HWND par = GetParent(hwnd);
+        if (par) SetFocus(par);
+      }
+    }
     if (enable == -1000 && [bla respondsToSelector:@selector(setEnabledSwellNoFocus)])
       [(SWELL_hwndChild *)bla setEnabledSwellNoFocus];
     else
@@ -3375,6 +3394,8 @@ STANDARD_CONTROL_NEEDSDISPLAY_IMPL("Edit")
 
           if (r.length > 0 && !str)
             [ts deleteCharactersInRange:r];
+          else if (str && ![ts length])
+            [self setString:str]; // dark-mode workaround, need default attributes
           else if (str)
             [ts replaceCharactersInRange:r withString:str];
 
@@ -3421,6 +3442,7 @@ STANDARD_CONTROL_NEEDSDISPLAY_IMPL([self isSelectable] ? "Edit" : "Static")
     m_disable_menu = false;
     m_ctlcolor_set = false;
     m_last_dark_mode = false;
+    m_userdata = 0;
   }
   return self;
 }
@@ -3457,14 +3479,7 @@ STANDARD_CONTROL_NEEDSDISPLAY_IMPL([self isSelectable] ? "Edit" : "Static")
   else if (![self isBordered] && ![self drawsBackground]) // looks like a static text control
   {
     const float alpha = ([self isEnabled] ? 1.0f : 0.5f);
-    if (!m_ctlcolor_set && SWELL_osx_is_dark_mode(1))
-    {
-      // NSColor textColor etc produce stale values on Catalina-Monterey
-      const float a = SWELL_osx_is_dark_mode(0) ? 1.0f : 0.0f;
-      [self setTextColor:[NSColor colorWithCalibratedRed:a green:a blue:a alpha:alpha]];
-    }
-    else
-      [self setTextColor:[[self textColor] colorWithAlphaComponent:alpha]];
+    [self setTextColor:[[self textColor] colorWithAlphaComponent:alpha]];
   }
   else
   {
@@ -3476,6 +3491,7 @@ STANDARD_CONTROL_NEEDSDISPLAY_IMPL([self isSelectable] ? "Edit" : "Static")
 
 - (void) drawRect:(NSRect)r
 {
+  // we could move this to sendSwellMessage if (uMsg == WM_DISPLAYCHANGE), but meh
   if (!m_ctlcolor_set && SWELL_osx_is_dark_mode(1))
   {
     const bool m = SWELL_osx_is_dark_mode(0);
@@ -3497,6 +3513,14 @@ STANDARD_CONTROL_NEEDSDISPLAY_IMPL([self isSelectable] ? "Edit" : "Static")
   return m_disable_menu ? nil : menu;
 }
 
+-(LONG_PTR)getSwellUserData
+{
+  return m_userdata;
+}
+-(void)setSwellUserData:(LONG_PTR)val
+{
+  m_userdata = val;
+}
 
 @end
 
@@ -5578,16 +5602,17 @@ LRESULT DefWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 void SWELL_BroadcastMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  int x;
-  NSArray *ch=[NSApp orderedWindows];
-  for(x=0;x<[ch count]; x ++)
+  NSArray *ch=[NSApp windows];
+  [ch retain];
+  for (int x=0;x<[ch count]; x ++)
   {
     NSView *v = [[ch objectAtIndex:x] contentView];
     if (v && [v respondsToSelector:@selector(onSwellMessage:p1:p2:)])
     {
       [(SWELL_hwndChild *)v onSwellMessage:uMsg p1:wParam p2:lParam];
     }
-  }  
+  }
+  [ch release];
 }
 
 

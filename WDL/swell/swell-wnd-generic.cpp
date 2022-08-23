@@ -490,6 +490,7 @@ void SetForegroundWindow(HWND hwnd)
 {
   if (WDL_NOT_NORMALLY(!hwnd)) return;
 
+  HWND oldFoc = GetFocus();
   // if a child window has focus, preserve that focus
   while (hwnd->m_parent && !hwnd->m_oswindow)
   {
@@ -497,19 +498,35 @@ void SetForegroundWindow(HWND hwnd)
     hwnd = hwnd->m_parent;
   }
   if (hwnd) swell_oswindow_focus(hwnd);
+  HWND foc = GetFocus();
+  if (foc && foc != oldFoc)
+    SendMessage(foc,WM_SETFOCUS,(WPARAM)oldFoc,0);
 }
 
 void SetFocus(HWND hwnd)
 {
   if (!hwnd) return; // windows allows SetFocus(NULL) to defocus, but we do not support that yet
+  HWND oldFoc = GetFocus();
+  if (oldFoc && oldFoc != hwnd)
+    SendMessage(oldFoc,WM_KILLFOCUS,(WPARAM)hwnd,0);
   hwnd->m_focused_child=NULL; // make sure this window has focus, not a child
-  SetForegroundWindow(hwnd);
+
+  HWND p = hwnd;
+  while (p->m_parent && !p->m_oswindow)
+  {
+    p->m_parent->m_focused_child = p;
+    p = p->m_parent;
+  }
+  if (p) swell_oswindow_focus(p);
+
+  if (hwnd != oldFoc)
+    SendMessage(hwnd,WM_SETFOCUS,(WPARAM)oldFoc,0);
 }
 
 void SWELL_OnNavigationFocus(HWND ch)
 {
   if (ch && ch->m_classname && (
-       !strcmp(ch->m_classname,"Edit") ||
+       (!strcmp(ch->m_classname,"Edit") && !(ch->m_style & ES_READONLY)) ||
        !strcmp(ch->m_classname,"combobox")
      ))
   {
@@ -1519,6 +1536,8 @@ fakeButtonClick:
     case WM_USER+100:
     case WM_CAPTURECHANGED:
     case WM_SETTEXT:
+    case WM_SETFOCUS:
+    case WM_KILLFOCUS:
       InvalidateRect(hwnd,NULL,FALSE);
     break;
   }
@@ -2869,7 +2888,10 @@ forceMouseMove:
     case WM_SETTEXT:
       if (es) 
       {
-        es->cursor_pos = WDL_utf8_get_charlen(hwnd->m_title.Get());
+        es->cursor_pos =
+          (hwnd->m_style & (ES_READONLY|ES_MULTILINE)) == (ES_READONLY|ES_MULTILINE) ? 0 :
+            WDL_utf8_get_charlen(hwnd->m_title.Get());
+
         es->sel1=es->sel2=-1;
         es->cache_linelen_w=es->cache_linelen_strlen=0;
         if ((hwnd->m_style & (ES_MULTILINE|ES_AUTOHSCROLL))==ES_AUTOHSCROLL &&
@@ -2937,6 +2959,11 @@ forceMouseMove:
         }
       }
     return 0;
+    case WM_KILLFOCUS:
+      SendMessage(GetParent(hwnd),WM_COMMAND,(EN_KILLFOCUS<<16) | (hwnd->m_id&0xffff),(LPARAM)hwnd);
+    case WM_SETFOCUS:
+      InvalidateRect(hwnd,NULL,FALSE);
+    break;
   }
   return DefWindowProc(hwnd,msg,wParam,lParam);
 }
@@ -3169,6 +3196,10 @@ static LRESULT WINAPI trackbarWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
           EndPaint(hwnd,&ps);
         }
       }
+    break;
+    case WM_SETFOCUS:
+    case WM_KILLFOCUS:
+      InvalidateRect(hwnd,NULL,FALSE);
     break;
   }
 
@@ -3725,6 +3756,10 @@ popupMenu:
       }
 
     return 0;
+    case WM_SETFOCUS:
+    case WM_KILLFOCUS:
+      InvalidateRect(hwnd,NULL,FALSE);
+    break;
   }
   return DefWindowProc(hwnd,msg,wParam,lParam);
 }
@@ -3782,6 +3817,7 @@ struct SWELL_ListView_Col
   int xwid;
   int sortindicator;
   int col_index;
+  int fmt;  // LVCFMT_
 };
 
 enum { LISTVIEW_HDR_YMARGIN = 2 };
@@ -3816,10 +3852,13 @@ struct listViewState
 
     m_color_bg = g_swell_ctheme.listview_bg;
     m_color_bg_sel = g_swell_ctheme.listview_bg_sel;
+    m_color_bg_sel_inactive = g_swell_ctheme.listview_bg_sel_inactive;
     m_color_text = g_swell_ctheme.listview_text;
     m_color_text_sel = g_swell_ctheme.listview_text_sel;
+    m_color_text_sel_inactive = g_swell_ctheme.listview_text_sel_inactive;
     m_color_grid = g_swell_ctheme.listview_grid;
     memset(m_color_extras,0xff,sizeof(m_color_extras)); // if !=-1, overrides bg/fg for (focus?0:2)
+    m_fastclick_mask = 0;
   } 
   ~listViewState()
   { 
@@ -3871,7 +3910,9 @@ struct listViewState
   int m_scroll_x,m_scroll_y, m_capmode_data1,m_capmode_data2;
   int m_extended_style;
 
-  int m_color_bg, m_color_bg_sel, m_color_text, m_color_text_sel, m_color_grid;
+  int m_fastclick_mask;
+
+  int m_color_bg, m_color_bg_sel, m_color_bg_sel_inactive, m_color_text, m_color_text_sel, m_color_text_sel_inactive, m_color_grid;
   int m_color_extras[4];
 
   int getTotalWidth() const
@@ -4230,6 +4271,7 @@ static LRESULT listViewWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
         const int hit = ypos >= 0 ? ((ypos+lvs->m_scroll_y) / row_height) : -1;
         if (hit < 0) return 1;
 
+        int subitem_col = 0;
         int subitem = 0; // display index
 
         {
@@ -4240,11 +4282,24 @@ static LRESULT listViewWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
           for (int x=0;x<ncol;x++)
           {
             const int xwid = lvs->m_cols.Get()[x].xwid;
-            if (xpt >= xpos && xpt < xpos+xwid) { subitem = x; break; }
+            if (xpt >= xpos && xpt < xpos+xwid)
+            {
+              subitem_col = lvs->m_cols.Get()[x].col_index;
+              subitem = x;
+              break;
+            }
             xpos += xwid;
           }
         }
 
+        if ((subitem_col >= 0 && subitem_col < 32 && (lvs->m_fastclick_mask & (1u<<subitem_col))) || // fastclick mode
+            (lvs->m_status_imagelist && GET_X_LPARAM(lParam) + lvs->m_scroll_x < lvs->m_last_row_height) // image click
+            )
+        {
+          NMLISTVIEW nm={{hwnd,hwnd->m_id,msg == WM_LBUTTONDBLCLK ? NM_DBLCLK : NM_CLICK},hit,lvs->GetColumnIndex(subitem),0,0,0, {s_clickpt.x, s_clickpt.y }};
+          SendMessage(GetParent(hwnd),WM_NOTIFY,hwnd->m_id,(LPARAM)&nm);
+          return 0;
+        }
 
         if (!lvs->m_is_multisel)
         {
@@ -4700,7 +4755,7 @@ forceMouseMove:
           DeleteObject(bgbr);
           const bool focused = GetFocus() == hwnd;
           const int bgsel = lvs->m_color_extras[focused ? 0 : 2 ];
-          bgbr=CreateSolidBrush(bgsel == -1 ? lvs->m_color_bg_sel : bgsel);
+          bgbr=CreateSolidBrush(bgsel == -1 ? focused ? lvs->m_color_bg_sel : lvs->m_color_bg_sel_inactive : bgsel);
           if (lvs) 
           {
             TEXTMETRIC tm; 
@@ -4766,7 +4821,7 @@ forceMouseMove:
               if (sel)
               {
                 int c = lvs->m_color_extras[focused ? 1 : 3 ];
-                text_c = c == -1 ? lvs->m_color_text_sel : c;
+                text_c = c == -1 ? focused ? lvs->m_color_text_sel : lvs->m_color_text_sel_inactive : c;
               }
               else
                 text_c = lvs->m_color_text;
@@ -4852,14 +4907,34 @@ forceMouseMove:
                   }
                   else ar.right = cr.right;
 
-                  if (ar.right > ar.left)
+                  if (ar.right > ar.left && str)
                   {
                     const int adj = (ar.right-ar.left)/16;
                     const int maxadj = SWELL_UI_SCALE(4);
-                    ar.left += wdl_min(adj,maxadj);
+                    int fmt = cols[col].fmt & 3;
+                    if (fmt != LVCFMT_LEFT)
+                    {
+                      RECT mr={0,};
+                      DrawText(ps.hdc,str,-1,&mr,DT_CALCRECT|DT_SINGLELINE|DT_NOPREFIX);
+                      if (mr.right-mr.left > ar.right-ar.left-maxadj) fmt = LVCFMT_LEFT;
+                    }
 
-                    if(str)
+                    if (fmt == LVCFMT_CENTER)
+                    {
+                      ar.left += maxadj/2;
+                      ar.right -= maxadj/2;
+                      DrawText(ps.hdc,str,-1,&ar,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+                    }
+                    else if (fmt == LVCFMT_RIGHT)
+                    {
+                      ar.right -= wdl_min(adj,maxadj);
+                      DrawText(ps.hdc,str,-1,&ar,DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+                    }
+                    else
+                    {
+                      ar.left += wdl_min(adj,maxadj);
                       DrawText(ps.hdc,str,-1,&ar,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+                    }
                   }
                 }
               }
@@ -4942,8 +5017,30 @@ forceMouseMove:
 
                   if (cols[col].name) 
                   {
-                    tr.left += wdl_min((tr.right-tr.left)/4,4);
-                    DrawText(ps.hdc,cols[col].name,-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+                    const int maxadj = SWELL_UI_SCALE(4);
+                    int fmt = cols[col].fmt & 3;
+                    if (fmt != LVCFMT_LEFT)
+                    {
+                      RECT mr={0,};
+                      DrawText(ps.hdc,cols[col].name,-1,&mr,DT_SINGLELINE|DT_NOPREFIX|DT_CALCRECT);
+                      if (mr.right - mr.left > tr.right-tr.left-maxadj) fmt = LVCFMT_LEFT;
+                    }
+                    if (fmt == LVCFMT_CENTER)
+                    {
+                      tr.left += maxadj/2;
+                      tr.right -= maxadj/2;
+                      DrawText(ps.hdc,cols[col].name,-1,&tr,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+                    }
+                    else if (fmt == LVCFMT_RIGHT)
+                    {
+                      tr.right -= wdl_min((tr.right-tr.left)/4,maxadj);
+                      DrawText(ps.hdc,cols[col].name,-1,&tr,DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+                    }
+                    else
+                    {
+                      tr.left += wdl_min((tr.right-tr.left)/4,maxadj);
+                      DrawText(ps.hdc,cols[col].name,-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+                    }
                   }
                 }
                 if (xpos >= cr.right) break;
@@ -5194,6 +5291,10 @@ forceMouseMove:
         return row ? 0 : LB_ERR;
       }
     return LB_ERR;
+    case WM_SETFOCUS:
+    case WM_KILLFOCUS:
+      InvalidateRect(hwnd,NULL,FALSE);
+    break;
   }
   return DefWindowProc(hwnd,msg,wParam,lParam);
 }
@@ -5336,7 +5437,7 @@ next_item_in_parent:
     return 0;
   }
 
-  void doDrawItem(HTREEITEM item, HDC hdc, RECT *rect) // draws any subitems too, updates rect->top
+  void doDrawItem(HTREEITEM item, HDC hdc, RECT *rect, bool focus) // draws any subitems too, updates rect->top
   {
 #ifdef SWELL_LICE_GDI
     if (!item) return;
@@ -5351,9 +5452,9 @@ next_item_in_parent:
         if (item == m_sel) 
         {
           SetBkMode(hdc,OPAQUE);
-          SetBkColor(hdc,g_swell_ctheme.treeview_bg_sel);
+          SetBkColor(hdc,focus ? g_swell_ctheme.treeview_bg_sel : g_swell_ctheme.treeview_bg_sel_inactive);
           oc = GetTextColor(hdc);
-          SetTextColor(hdc,g_swell_ctheme.treeview_text_sel);
+          SetTextColor(hdc,focus ? g_swell_ctheme.treeview_text_sel : g_swell_ctheme.treeview_text_sel_inactive);
         }
        
         RECT dr = *rect;
@@ -5397,7 +5498,7 @@ next_item_in_parent:
       rect->left += m_last_row_height;
       for (int x=0;x<n && rect->top < rect->bottom;x++)
       {
-        doDrawItem(item->m_children.Get(x),hdc,rect);
+        doDrawItem(item->m_children.Get(x),hdc,rect,focus);
       }
       rect->left -= m_last_row_height;
     } 
@@ -5688,7 +5789,7 @@ forceMouseMove:
             HGDIOBJ oldbr = SelectObject(ps.hdc,br);
 
             r.left -= tvs->m_last_row_height;
-            tvs->doDrawItem(&tvs->m_root,ps.hdc,&r);
+            tvs->doDrawItem(&tvs->m_root,ps.hdc,&r, GetFocus()==hwnd);
 
             SelectObject(ps.hdc,oldbr);
             SelectObject(ps.hdc,oldpen);
@@ -5707,6 +5808,10 @@ forceMouseMove:
     case WM_NCDESTROY:
       hwnd->m_private_data = 0;
       delete tvs;
+    break;
+    case WM_SETFOCUS:
+    case WM_KILLFOCUS:
+      InvalidateRect(hwnd,NULL,FALSE);
     break;
   }
   return DefWindowProc(hwnd,msg,wParam,lParam);
@@ -5890,6 +5995,10 @@ static LRESULT tabControlWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
         }
       }
       return 0;
+    case WM_SETFOCUS:
+    case WM_KILLFOCUS:
+      InvalidateRect(hwnd,NULL,FALSE);
+    break;
   }
   return DefWindowProc(hwnd,msg,wParam,lParam);
 }
@@ -6167,6 +6276,9 @@ void ListView_SetExtendedListViewStyleEx(HWND h, int flag, int mask)
 
 void SWELL_SetListViewFastClickMask(HWND hList, int mask)
 {
+  listViewState *lvs = hList ? (listViewState *)hList->m_private_data : NULL;
+  if (WDL_NOT_NORMALLY(!lvs)) return;
+  lvs->m_fastclick_mask = mask;
 }
 
 void ListView_SetImageList(HWND h, HIMAGELIST imagelist, int which)
@@ -6192,6 +6304,7 @@ void ListView_InsertColumn(HWND h, int pos, const LVCOLUMN *lvc)
   SWELL_ListView_Col col = { 0, 100 };
   if (lvc->mask & LVCF_WIDTH) col.xwid = lvc->cx;
   if (lvc->mask & LVCF_TEXT) col.name = lvc->pszText ? strdup(lvc->pszText) : NULL;
+  if (lvc->mask & LVCF_FMT) col.fmt = lvc->fmt;
 
   for (int x = 0; x < lvs->m_cols.GetSize(); x++)
     if (lvs->m_cols.Get()[x].col_index>=pos)
@@ -6216,6 +6329,7 @@ void ListView_SetColumn(HWND h, int pos, const LVCOLUMN *lvc)
     free(col->name);
     col->name = lvc->pszText ? strdup(lvc->pszText) : NULL;
   }
+  if (lvc->mask & LVCF_FMT) col->fmt = lvc->fmt;
 }
 
 void ListView_GetItemText(HWND hwnd, int item, int subitem, char *text, int textmax)
