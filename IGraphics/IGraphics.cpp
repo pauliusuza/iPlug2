@@ -2360,7 +2360,7 @@ void IGraphics::DrawGrid(const IColor& color, const IRECT& bounds, float gridSiz
   PathStroke(color, thickness, IStrokeOptions(), pBlend);
 }
 
-void IGraphics::DrawData(const IColor& color, const IRECT& bounds, float* normYPoints, int nPoints, float* normXPoints, const IBlend* pBlend, float thickness)
+void IGraphics::DrawData(const IColor& color, const IRECT& bounds, float* normYPoints, int nPoints, float* normXPoints, const IBlend* pBlend, float thickness, bool fill)
 {
   PathClear();
   
@@ -2378,7 +2378,16 @@ void IGraphics::DrawData(const IColor& color, const IRECT& bounds, float* normYP
       PathLineTo(xPos, bounds.B - (bounds.H() * normYPoints[i]));
     }
     
+  if(fill) {
+    PathLineTo(bounds.R, bounds.B);
+    PathLineTo(bounds.L, bounds.B);
+    PathLineTo(bounds.L, bounds.B - (bounds.H() * normYPoints[0]));
+    PathFill(IPattern(color));
+  }
+  
     PathStroke(color, thickness, IStrokeOptions(), pBlend);
+  
+    
   }
   
   void IGraphics::DrawDottedLine(const IColor& color, float x1, float y1, float x2, float y2, const IBlend* pBlend, float thickness, float dashLen)
