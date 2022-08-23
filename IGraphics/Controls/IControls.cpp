@@ -1171,11 +1171,15 @@ void IVGroupControl::OnInit()
 
 void IVGroupControl::Draw(IGraphics& g)
 {
-//  const float cr = GetRoundedCornerRadius(mWidgetBounds);
-//  g.FillRoundRect(GetColor(kBG), mWidgetBounds, cr);
+  //g.StartLayer(this, mRECT);
+  const float cr = GetRoundedCornerRadius(mWidgetBounds);
+  g.FillRoundRect(GetColor(kBG), mWidgetBounds, cr);
 //  g.FillRect(GetColor(kBG), mLabelBounds);
   DrawLabel(g);
   DrawWidget(g);
+  //ILayerPtr ctrl = g.EndLayer();
+  //g.ApplyLayerDropShadow(ctrl, IShadow(IPattern(GetColor(kSH)), mStyle.shadowBlur, mStyle.shadowOffsetX, mStyle.shadowOffsetY, mStyle.shadowAlpha));
+  //g.DrawLayer(ctrl);
 }
 
 void IVGroupControl::DrawWidget(IGraphics& g)
@@ -1185,8 +1189,10 @@ void IVGroupControl::DrawWidget(IGraphics& g)
   const float hft = ft/2.f;
   
   int nPaths = /*mStyle.drawShadows ? 2 :*/ 1;
+  //int nPaths = mStyle.drawShadows ? 2 : 1;
   
   auto b = mWidgetBounds.GetPadded(/*mStyle.drawShadows ? -mStyle.shadowOffset :*/ 0.f);
+  //auto b = mWidgetBounds.GetPadded(mStyle.drawShadows ? -mStyle.shadowOffset : 0.f);
   
   auto labelR = mLabelBounds.Empty() ? mRECT.MW() : mLabelBounds.R;
   auto labelL = mLabelBounds.Empty() ? mRECT.MW() : mLabelBounds.L;
@@ -1201,7 +1207,8 @@ void IVGroupControl::DrawWidget(IGraphics& g)
     g.PathArc(b.L + cr + hft - offset, b.B - cr - hft - offset, cr, 180.f, 270.f);
     g.PathArc(b.L + cr + hft - offset, b.T + cr + hft - offset, cr, 270.f, 360.f);
     g.PathLineTo(labelL, b.T + hft - offset);
-    g.PathStroke(mStyle.drawShadows ? GetColor(i == 0 ? kSH : kFR) : GetColor(kFR), ft);
+    //g.PathStroke(mStyle.drawShadows ? GetColor(i == 0 ? kSH : kFR) : GetColor(kFR), ft);
+    g.PathStroke(GetColor(kFR), ft);
   }
 }
 
