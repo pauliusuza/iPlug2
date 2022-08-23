@@ -229,6 +229,7 @@ void IGraphicsWin::OnDisplayTimer(int vBlankCount)
         UTF16ToUTF8(tempUTF8, wtxt);
         SetControlValueAfterTextEdit(tempUTF8.Get());
         DestroyEditWindow();
+        SetAllControlsDirty();
         break;
       }
       case kCancel:
