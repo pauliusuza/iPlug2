@@ -2709,7 +2709,7 @@ void IGraphics::PathTransformMatrix(const IMatrix& matrix)
       left += (dest.W() * 0.5) - (svg.W() * scale * 0.5);
     }
     if(svg.H() * scale < dest.H()) {
-      top += (dest.H() * 0.5) + (svg.H()* scale * 0.5);
+      top += (dest.H() * 0.5) - (svg.H()* scale * 0.5);
     }
     PathTransformTranslate(left, top);
     PathTransformScale(scale);
