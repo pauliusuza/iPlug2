@@ -429,7 +429,7 @@ IPlugControls::IPlugControls(const InstanceInfo& info)
       });
     };
     
-    pGraphics->AttachControl(new IVNumberBoxControl(sameCell().SubRectVertical(5, 3), kNoParameter, setLabelTextSize, "Label Text Size", style, (double) style.labelText.mSize, 12., 100.));
+    pGraphics->AttachControl(new IVNumberBoxControl(sameCell().SubRectVertical(5, 3).FracRectHorizontal(0.5f), kNoParameter, setLabelTextSize, "Label Size", style, false, (double) style.labelText.mSize, 12., 100.));
     
     auto setValueTextSize = [pGraphics](IControl* pCaller) {
       float newSize = (float) pCaller->As<IVNumberBoxControl>()->GetRealValue();
@@ -443,7 +443,7 @@ IPlugControls::IPlugControls(const InstanceInfo& info)
       });
     };
     
-    pGraphics->AttachControl(new IVNumberBoxControl(sameCell().SubRectVertical(5, 4), kNoParameter, setValueTextSize, "Value Text Size", style, (double) style.valueText.mSize, 12., 100.));
+    pGraphics->AttachControl(new IVNumberBoxControl(sameCell().SubRectVertical(5, 3).FracRectHorizontal(0.5f, true), kNoParameter, setValueTextSize, "Value Size", style, false, (double) style.valueText.mSize, 12., 100.));
 
     auto promptLabelFont = [pGraphics](IControl* pCaller) {
       WDL_String fileName;
@@ -465,7 +465,7 @@ IPlugControls::IPlugControls(const InstanceInfo& info)
       }
     };
     
-    pGraphics->AttachControl(new IVButtonControl(nextCell().SubRectVertical(5, 1), SplashClickActionFunc, "Choose label font...", style))->SetAnimationEndActionFunction(promptLabelFont);
+    pGraphics->AttachControl(new IVButtonControl(sameCell().SubRectVertical(5, 4).FracRectHorizontal(0.5f), SplashClickActionFunc, "Label font...", style.WithDrawShadows(false)))->SetAnimationEndActionFunction(promptLabelFont);
     
     auto promptValueFont = [pGraphics](IControl* pCaller) {
       WDL_String fileName;
@@ -488,7 +488,7 @@ IPlugControls::IPlugControls(const InstanceInfo& info)
       }
     };
     
-    pGraphics->AttachControl(new IVButtonControl(sameCell().SubRectVertical(5, 2), SplashClickActionFunc, "Choose value font...", style))->SetAnimationEndActionFunction(promptValueFont);
+    pGraphics->AttachControl(new IVButtonControl(sameCell().SubRectVertical(5, 4).FracRectHorizontal(0.5f, true), SplashClickActionFunc, "Value font...", style.WithDrawShadows(false)))->SetAnimationEndActionFunction(promptValueFont);
   };
 #endif
 }
