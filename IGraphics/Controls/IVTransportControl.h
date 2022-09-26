@@ -280,6 +280,7 @@ public:
     g.DrawText(mStyle.valueText, bpm.c_str(), mBpmRect);
     
     // draw play / stop button
+#if APP_TRANSPORT_BAR_PLAY_BUTTON
     DrawPressableRectangle(g, mPlayBtnRect, mPlay, mMouseOverPlay, false);
     IRECT symbolRect = mPlayBtnRect.GetCentredInside(mPlayBtnRect.H()*0.5, mPlayBtnRect.H()*0.5);
     if(mPlay) {
@@ -287,6 +288,7 @@ public:
     } else {
       g.FillTriangle(mStyle.valueText.mFGColor, symbolRect.L, symbolRect.T, symbolRect.L, symbolRect.B, symbolRect.R, symbolRect.MH());
     }
+#endif
 
 #if APP_TRANSPORT_BAR_OPEN_BUTTON
     // draw open button
