@@ -9,7 +9,7 @@ fi
 export PATH="${PWD}/$DEPOT_TOOLS_PATH:${PATH}"
 
 cd ../Build/src/skia
-python tools/git-sync-deps
+python3 tools/git-sync-deps
 ./bin/gn gen ../../tmp/skia/macOS_x86_64 --args='
 is_official_build = true
 skia_use_system_libjpeg_turbo = false
@@ -36,9 +36,9 @@ cc = "clang"
 cxx = "clang++"
 target_os = "mac"
 target_cpu = "x86_64"
-extra_cflags = ["-mmacosx-version-min=10.9"]
+extra_cflags = ["-mmacosx-version-min=10.11"]
 extra_cflags_c = ["-Wno-error"]
-extra_asmflags = ["-mmacosx-version-min=10.9"]
+extra_asmflags = ["-mmacosx-version-min=10.11"]
 '
 ninja -C ../../tmp/skia/macOS_x86_64
 
