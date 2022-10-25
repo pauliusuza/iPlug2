@@ -161,7 +161,7 @@ public:
   
   bool EditorResizeFromUI(int viewWidth, int viewHeight, bool needsPlatformResize) override;
   
-  void SendParameterValueFromUI(int paramIdx, double normalisedValue) override
+  virtual void SendParameterValueFromUI(int paramIdx, double normalisedValue) override
   {
     SetParameterValue(paramIdx, normalisedValue);
     IPluginBase::SendParameterValueFromUI(paramIdx, normalisedValue);
