@@ -1727,7 +1727,7 @@ NSFont *SWELL_GetNSFont(HGDIOBJ__ *obj);
 
 LRESULT SendMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-  if (WDL_NOT_NORMALLY(!hwnd)) return 0;
+  //if (WDL_NOT_NORMALLY(!hwnd)) return 0;
 
   SWELL_BEGIN_TRY
   id obj=(id)hwnd;
