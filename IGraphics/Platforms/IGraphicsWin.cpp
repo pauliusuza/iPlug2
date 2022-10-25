@@ -1634,8 +1634,8 @@ void IGraphicsWin::PromptForFile(WDL_String& fileName, WDL_String& path, EFileAc
     
   dirCStr[0] = '\0';
     
-  //if (!path.GetLength())
-  //  DesktopPath(path);
+  if (!path.GetLength())
+    DesktopPath(path);
     
   UTF8ToUTF16(dirCStr, path.Get(), _MAX_PATH);
     
