@@ -1200,7 +1200,7 @@ void* IGraphicsWin::OpenWindow(void* pParent)
   msgBody = "Unsupported OpenGL version, this software requires a video adapter supporting at least OpenGL 3.3.\n\nPlease check your video driver.";
 #endif
   
-  if(maj < majReq || maj > majReq || (maj == majReq && min < minReq)) {
+  if(maj < majReq || (maj == majReq && min < minReq)) {
     validWindow = false;
     ShowMessageBox(msgBody.c_str(),
                    msgTitle.c_str(),
