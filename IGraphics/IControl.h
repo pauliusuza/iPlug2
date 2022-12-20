@@ -1949,6 +1949,16 @@ private:
   bool mDrawFrame;
 };
 
+class IInvisibleButtonControl : public IButtonControlBase
+{
+public:
+  IInvisibleButtonControl(const IRECT& bounds, IActionFunction aF)
+  : IButtonControlBase(bounds, aF)
+  {}
+  
+  void Draw(IGraphics& g) override { /* NO-OP */ }
+};
+
 /** A control that can be specialised with a lambda function, for quick experiments without making a custom IControl */
 class ILambdaControl : public IControl
 {
@@ -2056,7 +2066,9 @@ public:
   : IControl(bounds)
   , mUseLayer(useLayer)
   , mSVG(svg)
-  {}
+  {
+    mIgnoreMouse = true;
+  }
 
   virtual ~ISVGControl() {}
 
