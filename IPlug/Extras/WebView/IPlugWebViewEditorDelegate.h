@@ -130,12 +130,17 @@ public:
 
   void OnWebViewReady() override
   {
+#ifdef OS_WIN
+    if (mScale > 1.)
+      SetEditorSize(GetEditorWidth() / mScale, GetEditorHeight() / mScale);
+#endif
     if (mEditorInitFunc)
       mEditorInitFunc();
   }
   
   void OnWebContentLoaded() override
   {
+    
     OnUIOpen();
   }
   
@@ -153,6 +158,7 @@ protected:
   int mMaxJSStringLength = kDefaultMaxJSStringLength;
   std::function<void()> mEditorInitFunc = nullptr;
   void* mHelperView = nullptr;
+  float mScale;
 };
 
 END_IPLUG_NAMESPACE
