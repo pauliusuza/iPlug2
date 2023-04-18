@@ -77,7 +77,9 @@ void IGraphics::SetScreenScale(float scale)
   mScreenScale = scale;
   int windowWidth = WindowWidth() * GetPlatformWindowScale();
   int windowHeight = WindowHeight() * GetPlatformWindowScale();
-    
+  
+  assert(windowWidth > 0 && windowHeight > 0 && "Window dimensions invalid");
+
   PlatformResize(GetDelegate()->EditorResizeFromUI(windowWidth, windowHeight, true));
   ForAllControls(&IControl::OnRescale);
   SetAllControlsDirty();
@@ -451,6 +453,21 @@ IControl* IGraphics::GetControlWithTag(int ctrlTag) const
     assert("There is no control attached with this tag");
     return nullptr;
   }
+}
+
+IControl* IGraphics::GetControlWithParamIdx(int paramIdx)
+{
+  for (auto c = 0; c < NControls(); c++)
+  {
+    IControl* pControl = GetControl(c);
+
+    if (pControl->LinkedToParam(paramIdx) > kNoValIdx)
+    {
+      return pControl;
+    }
+  }
+  
+  return nullptr;
 }
 
 void IGraphics::HideControl(int paramIdx, bool hide)
@@ -1764,20 +1781,17 @@ IBitmap IGraphics::ScaleBitmap(const IBitmap& inBitmap, const char* name, int sc
   return outBitmap;
 }
 
-inline void IGraphics::SearchNextScale(int& sourceScale, int targetScale)
-{
-  // Search downwards from MAX_IMG_SCALE, skipping targetScale before trying again
+auto SearchNextScale = [](int& sourceScale, int targetScale) {
   if (sourceScale == targetScale && (targetScale != MAX_IMG_SCALE))
     sourceScale = MAX_IMG_SCALE;
   else if (sourceScale == targetScale + 1)
     sourceScale = targetScale - 1;
   else
     sourceScale--;
-}
+};
 
 EResourceLocation IGraphics::SearchImageResource(const char* name, const char* type, WDL_String& result, int targetScale, int& sourceScale)
 {
-  // Search target scale, then descending
   for (sourceScale = targetScale ; sourceScale > 0; SearchNextScale(sourceScale, targetScale))
   {
     WDL_String fullName(name);
@@ -1802,7 +1816,6 @@ APIBitmap* IGraphics::SearchBitmapInCache(const char* name, int targetScale, int
 {
   StaticStorage<APIBitmap>::Accessor storage(sBitmapCache);
     
-  // Search target scale, then descending
   for (sourceScale = targetScale; sourceScale > 0; SearchNextScale(sourceScale, targetScale))
   {
     APIBitmap* pBitmap = storage.Find(name, sourceScale);
@@ -2360,8 +2373,11 @@ void IGraphics::DrawGrid(const IColor& color, const IRECT& bounds, float gridSiz
   PathStroke(color, thickness, IStrokeOptions(), pBlend);
 }
 
-void IGraphics::DrawData(const IColor& color, const IRECT& bounds, float* normYPoints, int nPoints, float* normXPoints, const IBlend* pBlend, float thickness, bool fill)
+void IGraphics::DrawData(const IColor& color, const IRECT& bounds, float* normYPoints, int nPoints, float* normXPoints, const IBlend* pBlend, float thickness)
 {
+  if (nPoints == 0)
+    return;
+  
   PathClear();
   
   float xPos = bounds.L;

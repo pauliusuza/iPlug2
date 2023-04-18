@@ -7,14 +7,9 @@ IPlugWebUI::IPlugWebUI(const InstanceInfo& info)
   GetParam(kGain)->InitGain("Gain", -70., -70, 0.);
 
   // Hard-coded paths must be modified!
-#ifdef OS_WIN
-  SetWebViewPaths("C:\\Users\\oli\\Dev\\iPlug2\\Examples\\IPlugWebUI\\packages\\Microsoft.Web.WebView2.1.0.824-prerelease\\runtimes\\win-x64\\native\\WebView2Loader.dll", "C:\\Users\\oli\\Dev\\iPlug2\\Examples\\IPlugWebUI\\");
-#endif
-
-
   mEditorInitFunc = [&]() {
 #ifdef OS_WIN
-    LoadFile("C:\\Users\\oli\\Dev\\iPlug2\\Examples\\IPlugWebUI\\resources\\web\\index.html", nullptr);
+    LoadFile(R"(C:\Users\oli\Dev\iPlug2\Examples\IPlugWebUI\resources\web\index.html)", nullptr);
 #else
     LoadFile("index.html", GetBundleID());
 #endif
