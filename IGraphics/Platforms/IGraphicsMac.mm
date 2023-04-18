@@ -335,14 +335,13 @@ void IGraphicsMac::ForceEndUserEdit()
 
 void IGraphicsMac::UpdateTooltips()
 {
-  if (!mView) return;
-  
+  if (!(mView && TooltipsEnabled()))
+    return;
+
   @autoreleasepool {
 
   [(IGRAPHICS_VIEW*) mView removeAllToolTips];
 
-  if(!TooltipsEnabled()) return;
-    
   if (GetPopupMenuControl() && GetPopupMenuControl()->GetState() > IPopupMenuControl::kCollapsed)
   {
     return;
@@ -419,9 +418,13 @@ void IGraphicsMac::PromptForFile(WDL_String& fileName, WDL_String& path, EFileAc
 
   if (fileName.GetLength())
     pDefaultFileName = [NSString stringWithCString:fileName.Get() encoding:NSUTF8StringEncoding];
-
+  else
+    pDefaultFileName = @"";
+  
   if (path.GetLength())
     pDefaultPath = [NSString stringWithCString:path.Get() encoding:NSUTF8StringEncoding];
+  else
+    pDefaultPath = @"";
 
   fileName.Set(""); // reset it
 
@@ -454,8 +457,8 @@ void IGraphicsMac::PromptForFile(WDL_String& fileName, WDL_String& path, EFileAc
   {
     pPanel = [NSSavePanel savePanel];
     
-    //[(NSSavePanel*) pPanel setDirectoryURL: [NSURL fileURLWithPath: pDefaultPath]];
-    //[(NSSavePanel*) pPanel setNameFieldStringValue: pDefaultFileName];
+    [(NSSavePanel*) pPanel setDirectoryURL: [NSURL fileURLWithPath: pDefaultPath]];
+    [(NSSavePanel*) pPanel setNameFieldStringValue: pDefaultFileName];
     [(NSSavePanel*) pPanel setAllowedFileTypes: pFileTypes];
     [(NSSavePanel*) pPanel setAllowsOtherFileTypes: NO];
   }
@@ -463,11 +466,13 @@ void IGraphicsMac::PromptForFile(WDL_String& fileName, WDL_String& path, EFileAc
   {
     pPanel = [NSOpenPanel openPanel];
     
+    [(NSOpenPanel*) pPanel setAllowedFileTypes: pFileTypes];
+    [(NSOpenPanel*) pPanel setDirectoryURL: [NSURL fileURLWithPath: pDefaultPath]];
     [(NSOpenPanel*) pPanel setCanChooseFiles:YES];
     [(NSOpenPanel*) pPanel setCanChooseDirectories:NO];
     [(NSOpenPanel*) pPanel setResolvesAliases:YES];
   }
-  [pPanel setLevel:CGShieldingWindowLevel()];
+  [pPanel setFloatingPanel: YES];
   
   if (completionHandler)
   {
@@ -504,7 +509,7 @@ void IGraphicsMac::PromptForDirectory(WDL_String& dir, IFileDialogCompletionHand
   [panelOpen setCanChooseDirectories:YES];
   [panelOpen setResolvesAliases:YES];
   [panelOpen setCanCreateDirectories:YES];
-
+  [panelOpen setFloatingPanel: YES];
   [panelOpen setDirectoryURL: [NSURL fileURLWithPath: defaultPath]];
   
   auto doHandleResponse = [](NSOpenPanel* pPanel, NSModalResponse response, WDL_String& chosenDir, IFileDialogCompletionHandlerFunc completionHandler){

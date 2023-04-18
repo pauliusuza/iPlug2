@@ -12,6 +12,7 @@ See LICENSE.txt for  more info.
 #include "IPlugPaths.h"
 #include <string>
 #include <windows.h>
+#include <shlobj.h>
 #include <cassert>
 #include <filesystem>
 
